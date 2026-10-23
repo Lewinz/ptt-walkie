@@ -93,6 +93,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/groups/{id}/mute", s.muteGroup)
 	mux.HandleFunc("POST /api/groups/{id}/leader-only", s.leaderOnly)
 	mux.HandleFunc("PUT /api/groups/{id}/members/{device}/role", s.setRole)
+	mux.HandleFunc("POST /api/groups/{id}/members/batch", s.batchJoin)
 	mux.HandleFunc("GET /api/codes/{code}", s.groupByCode)
 	mux.HandleFunc("POST /api/codes/{code}/join", s.joinByCode)
 	mux.HandleFunc("GET /api/nearby", s.nearby)
@@ -312,6 +313,45 @@ func (s *Server) setRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type batchReq struct {
+	Devices []deviceReq `json:"devices"`
+	// Pin makes the group every imported device's current channel (fleet
+	// "fixed channel" provisioning). Otherwise devices already in another
+	// group keep listening there.
+	Pin bool `json:"pin"`
+}
+
+// batchJoin provisions many devices into a group at once (B2B import).
+func (s *Server) batchJoin(w http.ResponseWriter, r *http.Request) {
+	var req batchReq
+	if !readJSON(w, r, &req) {
+		return
+	}
+	gid := r.PathValue("id")
+	if _, err := s.Store.Group(gid); err != nil {
+		writeErr(w, err)
+		return
+	}
+	var joined, failed []string
+	for _, d := range req.Devices {
+		id := strings.TrimSpace(d.DeviceID)
+		if _, err := s.Store.EnsureDevice(id, d.Name); err != nil {
+			failed = append(failed, d.DeviceID)
+			continue
+		}
+		join := s.Store.AddMember
+		if req.Pin {
+			join = s.Store.JoinGroup
+		}
+		if _, err := join(id, gid); err != nil {
+			failed = append(failed, id)
+			continue
+		}
+		joined = append(joined, id)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"joined": joined, "failed": failed})
 }
 
 func (s *Server) nearby(w http.ResponseWriter, r *http.Request) {

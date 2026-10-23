@@ -41,3 +41,17 @@
 | GET | `/api/recordings/{id}` | 单条元数据 |
 | GET | `/api/recordings/{id}/audio.ogg` | 音频下载 / 浏览器直接播放 |
 | POST | `/api/devices/{id}/replay` | 在设备上回放 `{n, group_id?, utterance_id?}`：按时间顺序实时推送，排除本机发言；对讲实时语音会打断回放；设备离线或无可回放内容返回 409 |
+
+## 车队管理
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/groups/{id}/members/batch` | 批量导入设备 `{devices: [{device_id, name}], pin}`；`pin: true` 时设为设备当前频道（固定频道），否则仅加入不打断当前收听 |
+
+## 页面
+
+| 路径 | 说明 |
+|---|---|
+| `/device` | 浏览器模拟对讲机（`?device=` 指定设备 ID，`?join=` 开机后自动按房间号入群） |
+| `/admin` | 车队管理：群实时状态（收听 / 讲话中）、二维码、设队长、解散、发言记录回听、批量导入 |
+| `/join/{code}` | 扫码入群页：绑定实体对讲机（填设备 ID）或用当前浏览器当对讲机 |

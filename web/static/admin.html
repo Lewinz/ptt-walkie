@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>灵矽对讲 · 车队管理</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="admin-page">
+<header class="admin-head">
+  <h1>灵矽对讲 · 车队管理</h1>
+  <span id="stats" class="stats"></span>
+  <a class="link" href="/device" target="_blank">打开模拟对讲机 ↗</a>
+</header>
+
+<main class="admin">
+  <aside class="admin-side">
+    <section class="card">
+      <h3>新建群</h3>
+      <form id="create" class="col">
+        <input name="name" placeholder="群名称，如：顺丰华东车队" required maxlength="20">
+        <div class="row">
+          <select name="type">
+            <option value="fixed">固定群</option>
+            <option value="temp">临时群</option>
+            <option value="emergency">紧急频道</option>
+          </select>
+          <select name="visibility">
+            <option value="code">仅房间号 / 扫码</option>
+            <option value="nearby">附近可见</option>
+            <option value="route">路线可见</option>
+          </select>
+        </div>
+        <input name="route" placeholder="路线，如：上海-成都 G42" hidden>
+        <div class="row" data-geo hidden>
+          <input name="lat" placeholder="纬度" inputmode="decimal">
+          <input name="lng" placeholder="经度" inputmode="decimal">
+        </div>
+        <input name="owner_id" placeholder="车队长设备 ID（可选）">
+        <button class="btn primary">创建</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h3>批量导入设备</h3>
+      <form id="batch" class="col">
+        <select name="group" required></select>
+        <textarea name="devices" rows="6" placeholder="每行一台：设备ID,显示名&#10;car-001,沪A12345&#10;car-002,沪B67890"></textarea>
+        <label class="check"><input type="checkbox" name="pin" checked> 设为设备当前频道（固定频道）</label>
+        <button class="btn primary">导入</button>
+      </form>
+    </section>
+  </aside>
+
+  <section id="groups" class="groups"></section>
+</main>
+
+<dialog id="rec-dialog" class="rec-dialog">
+  <header><h3 id="rec-title"></h3><button class="btn small" onclick="this.closest('dialog').close()">关闭</button></header>
+  <ol id="rec-list" class="rec-list"></ol>
+</dialog>
+
+<script src="/static/admin.js"></script>
+</body>
+</html>

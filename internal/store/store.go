@@ -331,6 +331,31 @@ func (s *Store) JoinGroup(deviceID, groupID string) (GroupView, error) {
 	return v, nil
 }
 
+// AddMember adds the device to the group without changing its current
+// channel, unless it has none yet.
+func (s *Store) AddMember(deviceID, groupID string) (GroupView, error) {
+	s.mu.Lock()
+	g, ok := s.groups[groupID]
+	if !ok {
+		s.mu.Unlock()
+		return GroupView{}, ErrNotFound
+	}
+	d := s.ensureDevice(deviceID)
+	var evs []Event
+	if d.CurrentGroup == "" {
+		evs = s.join(deviceID, g, RoleMember)
+	} else if _, ok := g.Members[deviceID]; !ok {
+		g.Members[deviceID] = &Member{DeviceID: deviceID, Role: RoleMember, JoinedAt: s.now()}
+		d.Groups = append(d.Groups, g.ID)
+		s.dirty = true
+		evs = append(evs, Event{Type: EvJoined, DeviceID: deviceID, GroupID: g.ID})
+	}
+	v := g.view()
+	s.mu.Unlock()
+	s.emit(evs...)
+	return v, nil
+}
+
 func (s *Store) join(deviceID string, g *Group, role Role) []Event {
 	d := s.ensureDevice(deviceID)
 	var evs []Event

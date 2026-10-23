@@ -104,3 +104,33 @@ func TestNearbyUsesDeviceLocation(t *testing.T) {
 		t.Fatalf("nearby without location: %d", code)
 	}
 }
+
+func TestBatchJoin(t *testing.T) {
+	ts := newServer(t)
+	var g, other GroupStatus
+	do(t, ts, "POST", "/api/groups", map[string]any{"name": "顺丰华东车队"}, &g)
+	do(t, ts, "POST", "/api/groups", map[string]any{"name": "家人", "owner_id": "car-2"}, &other)
+
+	var out struct{ Joined, Failed []string }
+	do(t, ts, "POST", "/api/groups/"+g.ID+"/members/batch", map[string]any{
+		"devices": []map[string]string{{"device_id": "car-1", "name": "沪A12345"}, {"device_id": "car-2"}, {"device_id": " "}},
+	}, &out)
+	if len(out.Joined) != 2 || len(out.Failed) != 1 {
+		t.Fatalf("batch %+v", out)
+	}
+	var d DeviceStatus
+	do(t, ts, "GET", "/api/devices/car-2", nil, &d)
+	if d.CurrentGroup != other.ID {
+		t.Fatal("unpinned import must not steal the current channel")
+	}
+	do(t, ts, "POST", "/api/groups/"+g.ID+"/members/batch", map[string]any{
+		"devices": []map[string]string{{"device_id": "car-2"}}, "pin": true}, nil)
+	do(t, ts, "GET", "/api/devices/car-2", nil, &d)
+	if d.CurrentGroup != g.ID {
+		t.Fatal("pinned import should switch channel")
+	}
+	do(t, ts, "GET", "/api/devices/car-1", nil, &d)
+	if d.Name != "沪A12345" {
+		t.Fatalf("name %q", d.Name)
+	}
+}
