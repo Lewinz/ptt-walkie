@@ -16,6 +16,7 @@ import (
 	"github.com/plant-squad/ptt-walkie/internal/api"
 	"github.com/plant-squad/ptt-walkie/internal/config"
 	"github.com/plant-squad/ptt-walkie/internal/store"
+	"github.com/plant-squad/ptt-walkie/internal/voice"
 )
 
 func main() {
@@ -37,7 +38,11 @@ func main() {
 		w.Write([]byte("ok"))
 	})
 	apiSrv := &api.Server{Store: st, BaseURL: cfg.BaseURL, NearbyRadiusKm: cfg.NearbyRadiusKm}
+	hub := voice.NewHub(st, apiSrv, cfg.MaxTalk)
+	apiSrv.Presence = hub
 	apiSrv.Register(mux)
+	mux.HandleFunc("GET /ws", hub.ServeWS)
+	go hub.Run(ctx)
 
 	srv := &http.Server{Addr: cfg.Addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() {

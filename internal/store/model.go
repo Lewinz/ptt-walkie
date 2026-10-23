@@ -139,5 +139,6 @@ type Event struct {
 	Type     EventType `json:"type"`
 	DeviceID string    `json:"device_id,omitempty"`
 	GroupID  string    `json:"group_id,omitempty"`
-	Members  []string  `json:"members,omitempty"`
+	Name     string    `json:"name,omitempty"`    // group name, set on dissolve
+	Members  []string  `json:"members,omitempty"` // former members, set on dissolve
 }
