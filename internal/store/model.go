@@ -47,6 +47,8 @@ type Group struct {
 	Type         GroupType          `json:"type"`
 	Visibility   Visibility         `json:"visibility"`
 	OwnerID      string             `json:"owner_id"`
+	Template     string             `json:"template,omitempty"`
+	TalkPolicy   TalkPolicy         `json:"talk_policy,omitempty"`
 	Route        string             `json:"route,omitempty"`
 	Location     *GeoPoint          `json:"location,omitempty"`
 	Members      map[string]*Member `json:"members"`
@@ -76,6 +78,8 @@ type GroupView struct {
 	Type         GroupType  `json:"type"`
 	Visibility   Visibility `json:"visibility"`
 	OwnerID      string     `json:"owner_id"`
+	Template     string     `json:"template,omitempty"`
+	TalkPolicy   TalkPolicy `json:"talk_policy,omitempty"`
 	Route        string     `json:"route,omitempty"`
 	Location     *GeoPoint  `json:"location,omitempty"`
 	Members      []Member   `json:"members"`

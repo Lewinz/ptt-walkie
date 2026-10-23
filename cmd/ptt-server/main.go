@@ -17,6 +17,7 @@ import (
 	"github.com/plant-squad/ptt-walkie/internal/api"
 	"github.com/plant-squad/ptt-walkie/internal/archive"
 	"github.com/plant-squad/ptt-walkie/internal/config"
+	"github.com/plant-squad/ptt-walkie/internal/lifecycle"
 	"github.com/plant-squad/ptt-walkie/internal/mcp"
 	"github.com/plant-squad/ptt-walkie/internal/store"
 	"github.com/plant-squad/ptt-walkie/internal/voice"
@@ -76,6 +77,7 @@ func main() {
 		go mcpSrv.RunBridge(ctx, ep)
 	}
 	go hub.Run(ctx)
+	go (&lifecycle.Janitor{Store: st, Hub: hub, DefaultIdle: cfg.TempGroupIdle}).Run(ctx, time.Minute)
 
 	srv := &http.Server{Addr: cfg.Addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() {

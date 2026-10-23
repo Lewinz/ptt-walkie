@@ -298,3 +298,39 @@ func TestDisconnectReleasesFloor(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 }
+
+func TestGuideTemplateListenOnlyAndGreeting(t *testing.T) {
+	e := newEnv(t)
+	g, _ := e.st.CreateGroup("guide", store.CreateGroupInput{Name: "故宫一日游", Template: "guide"})
+	tourist := e.dial(t, "tourist")
+	guide := e.dial(t, "guide")
+
+	e.st.JoinGroup("tourist", g.ID)
+	m := tourist.expect("channel")
+	if m["reason"] != "joined" || !strings.Contains(m["announce"].(string), "欢迎加入故宫一日游") ||
+		!strings.Contains(m["announce"].(string), "只听不讲") {
+		t.Fatalf("greeting %v", m)
+	}
+
+	tourist.send(map[string]string{"type": "ptt_start"})
+	if m := tourist.expect("floor"); m["granted"] != false || m["reason"] != "listen_only" {
+		t.Fatalf("tourist floor %v", m)
+	}
+	guide.send(map[string]string{"type": "ptt_start"})
+	if m := guide.expect("floor"); m["granted"] != true || m["utterance_id"] == "" {
+		t.Fatalf("guide floor %v", m)
+	}
+	guide.audio([]byte{1})
+	if m := tourist.expect("talk_start"); m["speaker_id"] != "guide" {
+		t.Fatalf("talk_start %v", m)
+	}
+
+	// a later plain switch back to the group is not greeted again
+	other, _ := e.st.CreateGroup("tourist", store.CreateGroupInput{Name: "家人", Template: "family"})
+	tourist.expect("channel")
+	e.st.SwitchGroup("tourist", g.ID)
+	if m := tourist.expect("channel"); m["reason"] != "switched" {
+		t.Fatalf("second switch %v", m)
+	}
+	_ = other
+}

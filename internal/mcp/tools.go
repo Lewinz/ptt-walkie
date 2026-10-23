@@ -38,6 +38,7 @@ func NewServer(d Deps) *Server {
 				"type":       enum("群类型：temp 临时群（附近 / 路线，长时间无人说话自动解散），fixed 固定群（车队、老乡、家人）。默认 fixed；附近群默认 temp", "temp", "fixed"),
 				"visibility": enum("可见性：code 仅房间号 / 扫码加入（默认），nearby 附近的人可发现，route 同路线的人可发现", "code", "nearby", "route"),
 				"route":      str("visibility=route 时的路线或目的地，如「上海-成都 G42」"),
+				"template":   enum("场景模板：driver 车队（默认），cycling 骑行，hiking 登山，guide 导游（只有导游能讲），worksite 工地班组，family 家庭", "driver", "cycling", "hiking", "guide", "worksite", "family"),
 			}, "name"),
 			handler: t.createGroup},
 		{Name: "join_group", Title: "入群",
@@ -231,6 +232,10 @@ func (t *tools) createGroup(_ context.Context, c Caller, a Args) Result {
 		Type:       store.GroupType(a.String("type")),
 		Visibility: store.Visibility(a.String("visibility")),
 		Route:      a.String("route"),
+		Template:   a.String("template"),
+	}
+	if _, ok := store.TemplateByID(in.Template); !ok {
+		in.Template = ""
 	}
 	if in.Visibility == store.VisNearby {
 		d, _ := t.Store.Device(c.DeviceID)
@@ -253,6 +258,9 @@ func (t *tools) createGroup(_ context.Context, c Caller, a Args) Result {
 	kind := "群"
 	if g.Type == store.GroupTemp {
 		kind = "临时群"
+	}
+	if t, ok := store.TemplateByID(g.Template); ok && t.ID != "driver" {
+		kind = t.Name + kind
 	}
 	return Result{
 		Text: fmt.Sprintf("已创建%s「%s」，房间号%s。其他人说「加入房间%s」就能进来。", kind, g.Name, SpokenCode(g.Code), SpokenCode(g.Code)),

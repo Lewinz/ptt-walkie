@@ -66,7 +66,7 @@ function render() {
   $('lcd-channel').textContent = g ? g.name : '未加入群';
   $('lcd-code').textContent = g ? `房间 ${g.code}` : '';
   $('lcd-online').textContent = g ? `${g.online_count}人在线 / ${g.members.length}人` : '';
-  $('lcd-type').textContent = g ? TYPE_LABEL[g.type] || '' : '';
+  $('lcd-type').textContent = g ? (TYPE_LABEL[g.type] || '') + (g.talk_policy === 'leaders' ? ' · 广播' : '') : '';
   const muted = g && d && d.muted_until && d.muted_until[g.id] && new Date(d.muted_until[g.id]) > new Date();
   const leaderOnly = g && d && d.leader_only && d.leader_only[g.id];
   const isLeader = g && g.members.some((m) => m.device_id === deviceId && m.role === 'leader');
@@ -178,7 +178,7 @@ function onMessage(m) {
         startRecognition(m.utterance_id);
       } else {
         PTTAudio.tones.deny();
-        log(m.reason === 'busy' ? `抢麦失败：${m.holder_name} 正在讲话` : '当前没有群，无法讲话', 'warn');
+        log({ busy: `抢麦失败：${m.holder_name} 正在讲话`, listen_only: '本群只有队长能讲话', no_group: '当前没有群，无法讲话' }[m.reason] || '无法讲话', 'warn');
       }
       renderStatus();
       break;
@@ -398,6 +398,20 @@ function bindControls() {
     if (code) joinCode(code);
   };
 
+  fetch('/api/templates').then((r) => r.json()).then((list) => {
+    for (const t of list) {
+      const o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = `${t.name}模板 · ${t.description}`;
+      $('create-template').append(o);
+    }
+    // Picking a template suggests its group type.
+    $('create-template').onchange = () => {
+      const t = list.find((x) => x.id === $('create-template').value);
+      if (t) $('create-type').value = t.type;
+    };
+  });
+
   $('create-vis').onchange = () => {
     const v = $('create-vis').value;
     $('create-route').hidden = v !== 'route';
@@ -408,7 +422,7 @@ function bindControls() {
     e.preventDefault();
     const name = $('create-name').value.trim();
     if (!name) return;
-    const body = { name, owner_id: deviceId, type: $('create-type').value, visibility: $('create-vis').value, route: $('create-route').value };
+    const body = { name, owner_id: deviceId, template: $('create-template').value, type: $('create-type').value, visibility: $('create-vis').value, route: $('create-route').value };
     try {
       const g = await api('POST', '/api/groups', body);
       $('create-name').value = '';

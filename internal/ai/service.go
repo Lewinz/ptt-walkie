@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -121,7 +122,7 @@ func (s *Service) onClientTranscript(deviceID, utteranceID, text string) {
 func MatchAlerts(text string, words []string) []string {
 	var hits []string
 	for _, w := range words {
-		if w = strings.TrimSpace(w); w != "" && strings.Contains(text, w) {
+		if w = strings.TrimSpace(w); w != "" && strings.Contains(text, w) && !slices.Contains(hits, w) {
 			hits = append(hits, w)
 		}
 	}
@@ -129,7 +130,13 @@ func MatchAlerts(text string, words []string) []string {
 }
 
 func (s *Service) apply(id, text string) {
-	alerts := MatchAlerts(text, s.AlertWords)
+	words := s.AlertWords
+	if cur, ok := s.Archive.Get(id); ok {
+		if g, err := s.Store.Group(cur.GroupID); err == nil {
+			words = append(slices.Clone(words), store.TemplateFor(g).AlertWords...)
+		}
+	}
+	alerts := MatchAlerts(text, words)
 	rec, err := s.Archive.Update(id, func(r *archive.Record) {
 		r.Transcript = text
 		r.Alert = alerts

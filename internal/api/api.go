@@ -83,6 +83,9 @@ func (s *Server) ShareURL(code string) string {
 }
 
 func (s *Server) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/templates", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, store.Templates())
+	})
 	mux.HandleFunc("GET /api/groups", s.listGroups)
 	mux.HandleFunc("POST /api/groups", s.createGroup)
 	mux.HandleFunc("GET /api/groups/{id}", s.getGroup)
@@ -117,6 +120,8 @@ func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) {
 
 type createGroupReq struct {
 	Name       string           `json:"name"`
+	Template   string           `json:"template"`
+	TalkPolicy store.TalkPolicy `json:"talk_policy"`
 	Type       store.GroupType  `json:"type"`
 	Visibility store.Visibility `json:"visibility"`
 	Route      string           `json:"route"`
@@ -130,7 +135,8 @@ func (s *Server) createGroup(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &req) {
 		return
 	}
-	in := store.CreateGroupInput{Name: req.Name, Type: req.Type, Visibility: req.Visibility, Route: req.Route}
+	in := store.CreateGroupInput{Name: req.Name, Type: req.Type, Visibility: req.Visibility, Route: req.Route,
+		Template: req.Template, TalkPolicy: req.TalkPolicy}
 	if req.Lat != nil && req.Lng != nil {
 		in.Location = &store.GeoPoint{Lat: *req.Lat, Lng: *req.Lng}
 	} else if req.Visibility == store.VisNearby && req.OwnerID != "" {

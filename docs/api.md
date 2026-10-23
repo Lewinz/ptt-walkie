@@ -7,7 +7,8 @@
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/groups` | 所有群（含在线人数、当前发言人） |
-| POST | `/api/groups` | 建群 `{name, owner_id, type: temp\|fixed\|emergency, visibility: code\|nearby\|route, route, lat, lng}`；附近群缺省坐标时取群主最近上报位置 |
+| POST | `/api/groups` | 建群 `{name, owner_id, template, type: temp\|fixed\|emergency, visibility: code\|nearby\|route, talk_policy: all\|leaders, route, lat, lng}`；附近群缺省坐标时取群主最近上报位置 |
+| GET | `/api/templates` | 场景模板列表 |
 | GET | `/api/groups/{id}` | 群详情 |
 | DELETE | `/api/groups/{id}` | 解散（带设备身份时须为车队长；不带视为管理端） |
 | GET | `/api/groups/{id}/qr.png` | 入群二维码（内容为 `{BASE_URL}/join/{code}`） |
@@ -65,3 +66,17 @@
 - **转写**：配置 `PTT_AI_KEY` 后，每段发言存档完成即调用七牛 `POST /v1/voice/asr`（`PTT_ASR_MODE=qiniu`，传录音公网地址，需 `PTT_BASE_URL` 可被公网访问）或 OpenAI 兼容 `/audio/transcriptions`（`PTT_ASR_MODE=openai`，直接上传）。未配置时采纳客户端自带转写。
 - **关键词预警**：转写命中 `PTT_ALERT_WORDS`（默认：事故、查车、封路、追尾、堵车、危险、救命、着火）时，向该群**所有在线成员**（含正在收听其他频道的）推送 `notice{level: alert}`：设备先放预警音，再播报「注意！车队的老王说：……」。
 - **离线补收**：设备断线超过 20 秒后重连，若当前群期间有他人发言：≤3 条自动补播原声，更多则播报摘要。
+
+## 场景模板与临时群生命周期
+
+| 模板 | 默认类型 | 发言规则 | 额外预警词 | 空闲解散 |
+|---|---|---|---|---|
+| `driver` 车队 | 固定 | 所有人 | 查车、限行、改道、爆胎 | — |
+| `cycling` 骑行 | 临时 | 所有人 | 掉队、爆胎、摔车、等一下 | 6 小时 |
+| `hiking` 登山 | 临时 | 所有人 | 迷路、受伤、掉队、下雨、天黑 | 24 小时 |
+| `guide` 导游 | 临时 | **仅队长**（游客只听，抢麦返回 `listen_only`） | 集合、走散 | 12 小时 |
+| `worksite` 工地班组 | 固定 | 所有人 | 受伤、塌方、漏电、起火、停电、撤离 | — |
+| `family` 家庭 | 固定 | 所有人 | 救命、摔倒、不舒服、迷路、快来 | — |
+
+- 入群时设备播报模板欢迎语，如「欢迎加入故宫一日游，请留意导游的讲解和集合通知。12人在线，本群只听不讲」。
+- 临时群按模板空闲时长（未指定时 `PTT_TEMP_GROUP_IDLE`，默认 2 小时）自动解散；解散前 5 分钟向群内播报「说句话就能保留」，正在讲话的群不会解散。

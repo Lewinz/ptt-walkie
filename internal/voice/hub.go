@@ -32,6 +32,7 @@ type Hub struct {
 	conns   map[string]*Conn
 	floors  map[string]*Utterance // group id → active utterance
 	offline map[string]time.Time  // device id → when it last disconnected
+	joined  map[string]string     // device id → group it just joined (greet on switch)
 	now     func() time.Time
 
 	// Hooks, set before serving.
@@ -48,6 +49,7 @@ func NewHub(st *store.Store, apiSrv *api.Server, maxTalk time.Duration) *Hub {
 		conns:       map[string]*Conn{},
 		floors:      map[string]*Utterance{},
 		offline:     map[string]time.Time{},
+		joined:      map[string]string{},
 		now:         time.Now,
 	}
 	st.Subscribe(h.onEvent)
@@ -158,6 +160,10 @@ func (h *Hub) requestFloor(c *Conn) {
 		return
 	}
 	leader := g.IsLeader(c.id)
+	if g.TalkPolicy == store.TalkLeaders && !leader {
+		c.sendJSON(floorMsg{Type: MsgFloor, Granted: false, GroupID: g.ID, Reason: "listen_only"})
+		return
+	}
 	prio := PriorityNormal
 	switch {
 	case g.Type == store.GroupEmergency:
@@ -369,7 +375,16 @@ func (h *Hub) onEvent(ev store.Event) {
 			h.sendChannel(c, ev.GroupID, "switched")
 		}
 		h.broadcastPresenceAll()
-	case store.EvJoined, store.EvLeft, store.EvUpdated:
+	case store.EvJoined:
+		h.mu.Lock()
+		// Greet only live joins; an offline join is just stale on reconnect.
+		if h.conns[ev.DeviceID] != nil {
+			h.joined[ev.DeviceID] = ev.GroupID
+		}
+		h.mu.Unlock()
+		h.refresh(ev.DeviceID)
+		h.broadcastPresence(ev.GroupID)
+	case store.EvLeft, store.EvUpdated:
 		if ev.DeviceID != "" {
 			h.refresh(ev.DeviceID)
 		}
@@ -410,7 +425,20 @@ func (h *Hub) sendChannel(c *Conn, groupID, reason string) {
 			gs = &st
 		}
 	}
-	c.sendJSON(map[string]any{"type": MsgChannel, "group": gs, "reason": reason, "announce": h.announce(gs)})
+	announce := h.announce(gs)
+	h.mu.Lock()
+	justJoined := groupID != "" && h.joined[c.id] == groupID
+	delete(h.joined, c.id)
+	h.mu.Unlock()
+	if justJoined && gs != nil {
+		t := store.TemplateFor(gs.GroupView)
+		announce = fmt.Sprintf(t.Greeting, gs.Name) + fmt.Sprintf("。%d人在线", gs.OnlineCount)
+		if gs.TalkPolicy == store.TalkLeaders && !gs.IsLeader(c.id) {
+			announce += "，本群只听不讲"
+		}
+		reason = "joined"
+	}
+	c.sendJSON(map[string]any{"type": MsgChannel, "group": gs, "reason": reason, "announce": announce})
 }
 
 // announce renders the short confirmation a device speaks after a switch.
