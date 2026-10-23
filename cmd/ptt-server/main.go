@@ -22,6 +22,7 @@ import (
 	"github.com/plant-squad/ptt-walkie/internal/lifecycle"
 	"github.com/plant-squad/ptt-walkie/internal/mcp"
 	"github.com/plant-squad/ptt-walkie/internal/social"
+	"github.com/plant-squad/ptt-walkie/internal/stats"
 	"github.com/plant-squad/ptt-walkie/internal/store"
 	"github.com/plant-squad/ptt-walkie/internal/voice"
 	"github.com/plant-squad/ptt-walkie/web"
@@ -60,6 +61,7 @@ func main() {
 	hub.AddRecorder(arc)
 	arcHandler := &archive.Handler{Archive: arc, Store: st, Hub: hub}
 	arcHandler.Register(mux)
+	stats.Register(mux, arc, st)
 
 	aiSvc := &ai.Service{Archive: arc, Replay: arcHandler, Store: st, Hub: hub,
 		PublicURL: cfg.BaseURL, AlertWords: cfg.AlertWords}
