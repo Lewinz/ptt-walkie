@@ -69,6 +69,7 @@ open http://localhost:8080/admin    # 车队管理
 
 - [需求与产品设计](docs/requirements.md) · [黑客松实施计划](docs/hackathon-plan.md)
 - [设备对讲协议](docs/protocol.md) — 固件对接（WebSocket + Opus）
+- [固件接入指南](docs/firmware.md) — ESP32 双通道 / 音频仲裁 / 联调工具 / 性能实测
 - [MCP Server](docs/mcp.md) — 工具列表、设备身份、灵矽接入、内置助手
 - [REST API](docs/api.md) — 群组、设备、存档回放、AI、模板
 
@@ -79,4 +80,6 @@ make test   # go test -race ./...
 make vet
 ```
 
-代码结构：`cmd/ptt-server` 入口；`internal/{store,api,voice,archive,mcp,ai,assistant,lifecycle,config}`；`web/static` 前端（`go:embed` 打包）。
+设备模拟器：`go run ./cmd/ptt-sim -mode echo|play|load -code <房间号>`（回声测试 / 循环播放 / 压测）。
+
+代码结构：`cmd/ptt-server` 入口、`cmd/ptt-sim` 设备模拟器；`internal/{store,api,voice,archive,mcp,ai,assistant,lifecycle,config}`；`web/static` 前端（`go:embed` 打包）。

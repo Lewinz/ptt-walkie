@@ -5,6 +5,7 @@ run:
 
 build:
 	go build -o bin/ptt-server ./cmd/ptt-server
+	go build -o bin/ptt-sim ./cmd/ptt-sim
 
 test:
 	go test -race ./...
