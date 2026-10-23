@@ -16,6 +16,7 @@ import (
 	"github.com/plant-squad/ptt-walkie/internal/ai"
 	"github.com/plant-squad/ptt-walkie/internal/api"
 	"github.com/plant-squad/ptt-walkie/internal/archive"
+	"github.com/plant-squad/ptt-walkie/internal/assistant"
 	"github.com/plant-squad/ptt-walkie/internal/config"
 	"github.com/plant-squad/ptt-walkie/internal/lifecycle"
 	"github.com/plant-squad/ptt-walkie/internal/mcp"
@@ -72,6 +73,7 @@ func main() {
 
 	mcpSrv := mcp.NewServer(mcp.Deps{Store: st, API: apiSrv, Hub: hub, Archive: arcHandler, AI: aiSvc, NearbyRadiusKm: cfg.NearbyRadiusKm})
 	(&mcp.HTTPHandler{Server: mcpSrv, Token: cfg.AuthToken}).Register(mux)
+	(&assistant.Assistant{MCP: mcpSrv, LLM: aiSvc.Client}).Register(mux)
 	web.Register(mux)
 	for _, ep := range mcp.ParseEndpoints(cfg.MCPEndpoint) {
 		go mcpSrv.RunBridge(ctx, ep)

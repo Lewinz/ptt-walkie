@@ -172,3 +172,11 @@ textarea { background: #11141a; color: var(--text); border: 1px solid var(--line
 .join-opt .btn { display: block; text-align: center; text-decoration: none; }
 .join-result.ok { color: var(--ok); }
 .join-result.err { color: var(--err); }
+
+/* ---------- assistant ---------- */
+.assist { margin: 6px 0 14px; display: flex; flex-direction: column; gap: 8px; }
+.ai-btn { background: #1d2c44; border-color: #2f4a73; color: #cfe2ff; padding: 12px; font-weight: 600; touch-action: none; }
+.ai-btn small { font-weight: 400; opacity: .7; margin-left: 6px; }
+.ai-btn.listening { background: #2f4a73; animation: blink 1s infinite; }
+.ai-reply { margin: 0; padding: 10px 12px; border-radius: 10px; background: #1d2c44; color: #cfe2ff; font-size: 14px; }
+.ai-reply .q { color: var(--muted); display: block; font-size: 12px; margin-bottom: 4px; }

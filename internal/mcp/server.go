@@ -14,6 +14,9 @@ import (
 // Supported protocol revisions, newest first.
 var protocolVersions = []string{"2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"}
 
+// Instructions is the agent system prompt shared with the built-in assistant.
+const Instructions = serverInstructions
+
 const serverInstructions = `你是车载对讲机的语音助手。用户通过对讲机和车队、老乡、同路线司机群聊。
 - 建群、入群、切群、查在线、静音、回放、摘要等一律调用工具完成，不要编造群名、房间号或在线人数。
 - 房间号是 4~5 位数字，用户可能说「三八二五」「洞两拐」等，原样传给工具即可。
@@ -82,6 +85,20 @@ type Server struct {
 func (s *Server) AddTool(t *Tool) { s.tools = append(s.tools, t) }
 
 func (s *Server) Tools() []*Tool { return s.tools }
+
+// Call invokes a tool directly (used by the built-in assistant).
+func (s *Server) Call(ctx context.Context, caller Caller, name string, args map[string]any) (Result, bool) {
+	i := slices.IndexFunc(s.tools, func(t *Tool) bool { return t.Name == name })
+	if i < 0 {
+		return Result{}, false
+	}
+	if args == nil {
+		args = map[string]any{}
+	}
+	res := s.tools[i].handler(ctx, caller, Args(args))
+	slog.Info("assistant tool", "tool", name, "device", caller.DeviceID, "error", res.IsError, "text", res.Text)
+	return res, true
+}
 
 // Handle processes one JSON-RPC message and returns the encoded response, or
 // nil for notifications.

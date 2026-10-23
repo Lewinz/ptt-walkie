@@ -72,3 +72,10 @@ npx @modelcontextprotocol/inspector  # Transport: Streamable HTTP, URL: http://l
 4. 切群有歧义时，把候选群名念给用户选择。
 5. 不要主动闲聊，避免分散驾驶注意力。
 ```
+
+## 内置助手（灵矽智能体替身）
+
+没有灵矽设备时，模拟对讲机上的「🤖 AI 助手」按钮可以完整演示语音控制：按住说话（浏览器 Web Speech API）或直接输入文字 → `POST /api/assistant {device_id, text}` → 调用**同一套 MCP 工具** → 返回播报文本。
+
+- 配置了 `PTT_AI_KEY`：走 LLM function calling，工具定义直接取自 MCP `tools/list`，system prompt 与 MCP `instructions` 相同——行为与灵矽智能体接入后一致。
+- 未配置或 LLM 出错：降级为规则解析，覆盖需求文档中的全部话术（建群 / 附近群 / 路线群、房间号入群、按名称 / 顺序切群、查询、静音时长、只听队长、留言、回放条数、错过摘要、分享、退群、解散）。
