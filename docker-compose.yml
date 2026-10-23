@@ -11,6 +11,7 @@ services:
       PTT_AI_MODEL: ${PTT_AI_MODEL:-deepseek-v3}
       PTT_AUTH_TOKEN: ${PTT_AUTH_TOKEN:-}
       PTT_MCP_ENDPOINT: ${PTT_MCP_ENDPOINT:-}
+      PTT_DEMO: ${PTT_DEMO:-1}
     restart: unless-stopped
 
 volumes:

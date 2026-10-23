@@ -1,7 +1,10 @@
-.PHONY: run build test vet
+.PHONY: run demo build test vet
 
 run:
 	go run ./cmd/ptt-server
+
+demo:
+	PTT_DEMO=1 go run ./cmd/ptt-server
 
 build:
 	go build -o bin/ptt-server ./cmd/ptt-server
