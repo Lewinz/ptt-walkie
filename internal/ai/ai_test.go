@@ -284,3 +284,20 @@ func TestMatchAlerts(t *testing.T) {
 		t.Fatalf("%v", got)
 	}
 }
+
+func TestASRUsesAudioURLHook(t *testing.T) {
+	var asrURL atomic.Value
+	fake := fakeAI(t, "收到", "", &asrURL)
+	r := newRig(t, &Client{BaseURL: fake.URL + "/v1", Key: "k", ASRMode: "qiniu", ASRModel: "asr"})
+	r.svc.AudioURL = func(_ context.Context, rec archive.Record) (string, error) {
+		return "https://s3.cn-east-1.qiniucs.com/bucket/" + rec.ID + ".ogg?X-Amz-Signature=x", nil
+	}
+	g, _ := r.st.CreateGroup("wang", store.CreateGroupInput{Name: "车队"})
+	r.st.JoinGroup("li", g.ID)
+	wang, li := r.dial(t, "wang"), r.dial(t, "li")
+	uid := wang.talk(3)
+	li.wait("transcript")
+	if got := asrURL.Load().(string); got != "https://s3.cn-east-1.qiniucs.com/bucket/"+uid+".ogg?X-Amz-Signature=x" {
+		t.Fatalf("asr url %s", got)
+	}
+}

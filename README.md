@@ -64,6 +64,9 @@ open http://localhost:8080/admin    # 车队管理
 | `PTT_AUTH_TOKEN` | — | `/mcp` 访问令牌（Bearer 或 `?token=`） |
 | `PTT_MCP_ENDPOINT` | — | MCP 接入点：`wss://…?token=…\|设备ID; …` |
 | `PTT_TLS_CERT` / `PTT_TLS_KEY` | — | 启用 HTTPS |
+| `PTT_KODO_BUCKET` / `PTT_KODO_AK` / `PTT_KODO_SK` | — | 配置后录音同步到七牛 Kodo（S3 兼容接口），ASR 改用预签名链接，**服务端无公网地址也能转写** |
+| `PTT_KODO_ENDPOINT` | `https://s3.cn-east-1.qiniucs.com` | Kodo S3 域名，区域自动从域名解析（或 `PTT_KODO_REGION`） |
+| `PTT_KODO_PREFIX` | `ptt-walkie/` | 对象键前缀 |
 
 ## 文档
 

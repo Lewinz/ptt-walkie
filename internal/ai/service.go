@@ -23,12 +23,15 @@ import (
 // catch-up into the relay. It degrades gracefully: without an AI client it
 // accepts client-side transcripts and summarises by speaker counts.
 type Service struct {
-	Client     *Client // nil when no AI key is configured
-	Archive    *archive.Archive
-	Replay     *archive.Handler
-	Store      *store.Store
-	Hub        *voice.Hub
-	PublicURL  string // base URL the ASR service can fetch recordings from
+	Client    *Client // nil when no AI key is configured
+	Archive   *archive.Archive
+	Replay    *archive.Handler
+	Store     *store.Store
+	Hub       *voice.Hub
+	PublicURL string // base URL the ASR service can fetch recordings from
+	// AudioURL, if set, provides the URL handed to ASR (e.g. a presigned
+	// Kodo link) instead of PublicURL.
+	AudioURL   func(ctx context.Context, rec archive.Record) (string, error)
 	AlertWords []string
 
 	// Reconnects after shorter outages than this are not worth a catch-up.
@@ -81,6 +84,12 @@ func (s *Service) onSaved(rec archive.Record) {
 		return
 	}
 	url := strings.TrimRight(s.PublicURL, "/") + "/api/recordings/" + rec.ID + "/audio.ogg"
+	if s.AudioURL != nil {
+		if url, err = s.AudioURL(ctx, rec); err != nil {
+			slog.Warn("asr audio url", "utterance", rec.ID, "err", err)
+			return
+		}
+	}
 	text, err := s.Client.Transcribe(ctx, url, ogg)
 	if err != nil {
 		slog.Warn("asr failed", "utterance", rec.ID, "err", err)

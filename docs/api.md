@@ -35,6 +35,8 @@
 
 每段 PTT 发言（≥3 帧，过滤误触）存为标准 Ogg Opus 文件（`$PTT_DATA_DIR/recordings/{group}/{utterance}.ogg`），索引为 JSON Lines（`index.jsonl`，后写覆盖先写，便于追加转写结果）。
 
+配置 `PTT_KODO_*` 后，每段录音异步上传到七牛 Kodo（S3 兼容接口，自研 SigV4，路径风格 `{endpoint}/{bucket}/{prefix}{group}/{utterance}.ogg`），记录 `remote` 字段为对象键；ASR 使用 1 小时有效的预签名链接；本地文件被清理后下载接口 302 到 Kodo。
+
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/groups/{id}/recordings?limit=20` | 最近发言（新→旧），含发言人、时长、转写、预警词 |
