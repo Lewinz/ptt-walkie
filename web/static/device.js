@@ -324,6 +324,66 @@ function showSubtitle(m) {
   subtitleTimer = setTimeout(renderStatus, 6000);
 }
 
+// ---------- AI assistant (stand-in for the Lingxi agent) ----------
+async function askAssistant(text) {
+  text = (text || '').trim();
+  if (!text) return;
+  const box = $('ai-reply');
+  box.hidden = false;
+  box.innerHTML = '<span class="q"></span><span class="a">…</span>';
+  box.querySelector('.q').textContent = '🗣 ' + text;
+  try {
+    const r = await api('POST', '/api/assistant', { device_id: deviceId, text });
+    box.querySelector('.a').textContent = '🤖 ' + r.text;
+    log(`🤖 ${text} → ${r.actions.map((a) => a.tool).join(', ') || '无操作'}${r.by_llm ? '（LLM）' : ''}`);
+    PTTAudio.speak(r.text);
+    refreshDevice();
+  } catch (e) {
+    box.querySelector('.a').textContent = '助手出错：' + e.message;
+  }
+}
+
+function bindAssistant() {
+  const btn = $('ai-btn');
+  let r = null;
+  let pressedAt = 0;
+  let heard = '';
+  btn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    btn.setPointerCapture(e.pointerId);
+    pressedAt = Date.now();
+    heard = '';
+    if (!Recognition) return;
+    PTTAudio.hush();
+    r = new Recognition();
+    r.lang = 'zh-CN';
+    r.interimResults = true;
+    r.onresult = (ev) => {
+      heard = [...ev.results].map((x) => x[0].transcript).join('');
+      $('ai-text').value = heard;
+    };
+    r.onend = () => {
+      btn.classList.remove('listening');
+      if (heard) askAssistant(heard);
+    };
+    r.onerror = (ev) => log('语音识别不可用：' + ev.error + '，请直接输入文字', 'warn');
+    try { r.start(); btn.classList.add('listening'); } catch { r = null; }
+  });
+  const release = () => {
+    if (r) { const rr = r; r = null; setTimeout(() => rr.stop(), 300); }
+    // A quick tap (or no speech support) falls back to typing.
+    if (Date.now() - pressedAt < 350 || !Recognition) $('ai-text').focus();
+  };
+  btn.addEventListener('pointerup', release);
+  btn.addEventListener('pointercancel', release);
+  $('ai-form').onsubmit = (e) => {
+    e.preventDefault();
+    askAssistant($('ai-text').value);
+    $('ai-text').value = '';
+    $('ai-text').blur();
+  };
+}
+
 // ---------- controls ----------
 function bindControls() {
   $('prev').onclick = () => send({ type: 'switch', delta: -1 });
@@ -482,6 +542,7 @@ function boot() {
   };
   bindPTT();
   bindControls();
+  bindAssistant();
   render();
 }
 

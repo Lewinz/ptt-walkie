@@ -123,3 +123,47 @@ func (c *Client) transcribeUpload(ctx context.Context, ogg []byte) (string, erro
 	}
 	return strings.TrimSpace(out.Text), nil
 }
+
+// ToolCall is a function call requested by the model.
+type ToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+// Message is an OpenAI chat message.
+type Message struct {
+	Role       string     `json:"role"`
+	Content    string     `json:"content"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+// ChatTools runs one chat completion round with function tools.
+func (c *Client) ChatTools(ctx context.Context, msgs []Message, tools []map[string]any) (Message, error) {
+	body, _ := json.Marshal(map[string]any{
+		"model":       c.Model,
+		"messages":    msgs,
+		"tools":       tools,
+		"tool_choice": "auto",
+		"temperature": 0.2,
+		"max_tokens":  300,
+	})
+	req, _ := http.NewRequest(http.MethodPost, c.url("/chat/completions"), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	var out struct {
+		Choices []struct {
+			Message Message `json:"message"`
+		} `json:"choices"`
+	}
+	if err := c.do(ctx, req, &out); err != nil {
+		return Message{}, err
+	}
+	if len(out.Choices) == 0 {
+		return Message{}, errors.New("chat: empty response")
+	}
+	return out.Choices[0].Message, nil
+}
