@@ -242,6 +242,22 @@ func (a *Archive) Since(groupID string, t time.Time) []Record {
 	return out
 }
 
+// All returns every group's records started at or after t, oldest first.
+func (a *Archive) All(t time.Time) []Record {
+	a.mu.Lock()
+	var out []Record
+	for _, list := range a.byGroup {
+		for _, r := range list {
+			if !r.StartedAt.Before(t) {
+				out = append(out, *r)
+			}
+		}
+	}
+	a.mu.Unlock()
+	sort.Slice(out, func(i, j int) bool { return out[i].StartedAt.Before(out[j].StartedAt) })
+	return out
+}
+
 func (a *Archive) Get(id string) (Record, bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()

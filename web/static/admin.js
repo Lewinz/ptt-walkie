@@ -226,5 +226,93 @@ fetch('/api/templates').then((r) => r.json()).then((list) => {
   };
 });
 
+// ---------- stats ----------
+const fmtMin = (m) => (m === 0 ? '0' : m < 0.1 ? '<0.1' : m >= 100 ? String(Math.round(m)) : m.toFixed(1));
+
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = 10 ** Math.floor(Math.log10(v));
+  return [1, 2, 5, 10].map((k) => k * p).find((x) => x >= v);
+}
+
+async function refreshStats() {
+  const hours = $('#stats-hours').value;
+  let r;
+  try {
+    r = await api('GET', `/api/stats?hours=${hours}`);
+  } catch {
+    return;
+  }
+  const t = r.totals;
+  const tiles = [
+    [fmtMin(t.talk_minutes), '通话分钟'],
+    [t.utterances, '发言次数'],
+    [t.active_devices, '活跃设备'],
+    [t.alerts, '安全预警'],
+  ];
+  $('#stats-tiles').replaceChildren(...tiles.map(([v, k]) => el('div', { class: 'tile' }, el('div', { class: 'v' }, String(v)), el('div', { class: 'k' }, k))));
+
+  // Collapse to at most 24 columns so bars stay readable on long ranges.
+  const per = Math.ceil(r.hourly.length / 24);
+  const cols = [];
+  for (let i = 0; i < r.hourly.length; i += per) {
+    const chunk = r.hourly.slice(i, i + per);
+    cols.push({
+      start: new Date(chunk[0].start),
+      hours: chunk.length,
+      minutes: chunk.reduce((a, b) => a + b.talk_minutes, 0),
+      count: chunk.reduce((a, b) => a + b.utterances, 0),
+    });
+  }
+  const max = niceMax(Math.max(...cols.map((c) => c.minutes)));
+  const label = (c) => per === 1
+    ? `${String(c.start.getHours()).padStart(2, '0')}:00`
+    : `${c.start.getMonth() + 1}/${c.start.getDate()} ${String(c.start.getHours()).padStart(2, '0')}时`;
+
+  const plot = $('#stats-chart');
+  const tip = $('#stats-tip');
+  const grid = [0, 0.5, 1].map((f) => el('div', { class: 'chart-grid', style: `bottom:${f * 100}%` }, el('span', {}, fmtMin(max * f))));
+  const bars = el('div', { class: 'chart-bars' }, cols.map((c) => {
+    const col = el('div', { class: 'chart-col', role: 'img', 'aria-label': `${label(c)} ${fmtMin(c.minutes)} 分钟，${c.count} 次发言` },
+      el('div', { class: 'chart-bar', style: `height:${(c.minutes / max) * 100}%` }));
+    col.addEventListener('mouseenter', () => {
+      tip.textContent = `${label(c)} · ${fmtMin(c.minutes)} 分钟 · ${c.count} 次发言`;
+      tip.hidden = false;
+      const box = col.getBoundingClientRect();
+      const fig = plot.parentElement.getBoundingClientRect();
+      tip.style.left = `${box.left - fig.left + box.width / 2}px`;
+      tip.style.top = `${box.top - fig.top + 20}px`;
+    });
+    col.addEventListener('mouseleave', () => { tip.hidden = true; });
+    return col;
+  }));
+  plot.replaceChildren(...grid, bars);
+  // x labels: every 6th column keeps them from colliding
+  const xs = el('div', { class: 'chart-x' }, cols.map((c, i) => el('span', {}, i % 6 === 0 ? label(c) : '')));
+  plot.nextElementSibling?.classList.contains('chart-x') ? plot.nextElementSibling.replaceWith(xs) : plot.after(xs);
+
+  $('#stats-hourly-table').replaceChildren(
+    el('tr', {}, el('th', {}, '时段'), el('th', {}, '分钟'), el('th', {}, '发言')),
+    ...cols.filter((c) => c.count).map((c) => el('tr', {}, el('td', {}, label(c)), el('td', {}, fmtMin(c.minutes)), el('td', {}, String(c.count)))),
+  );
+
+  $('#stats-groups').replaceChildren(
+    el('caption', {}, '群活跃度'),
+    el('tr', {}, el('th', {}, '群'), el('th', { class: 'n' }, '分钟'), el('th', { class: 'n' }, '发言'), el('th', { class: 'n' }, '发言人'), el('th', { class: 'n' }, '预警')),
+    ...(r.groups.length ? r.groups.slice(0, 8).map((g) => el('tr', {},
+      el('td', {}, g.name), el('td', { class: 'n' }, fmtMin(g.talk_minutes)), el('td', { class: 'n' }, String(g.utterances)),
+      el('td', { class: 'n' }, String(g.speakers)), el('td', { class: 'n' }, g.alerts ? `⚠ ${g.alerts}` : '0'))) : [el('tr', {}, el('td', { colspan: 5 }, '暂无发言'))]),
+  );
+  $('#stats-devices').replaceChildren(
+    el('caption', {}, '发言最多的设备'),
+    el('tr', {}, el('th', {}, '设备'), el('th', { class: 'n' }, '分钟'), el('th', { class: 'n' }, '发言')),
+    ...(r.devices.length ? r.devices.slice(0, 8).map((d) => el('tr', {},
+      el('td', {}, d.name), el('td', { class: 'n' }, fmtMin(d.talk_minutes)), el('td', { class: 'n' }, String(d.utterances)))) : [el('tr', {}, el('td', { colspan: 3 }, '暂无发言'))]),
+  );
+}
+$('#stats-hours').onchange = refreshStats;
+refreshStats();
+setInterval(refreshStats, 10000);
+
 refresh();
 setInterval(refresh, 2000);
