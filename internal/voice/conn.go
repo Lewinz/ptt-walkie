@@ -206,6 +206,10 @@ func (h *Hub) handleMessage(c *Conn, m Inbound) {
 		if h.OnTranscript != nil && m.UtteranceID != "" && m.Text != "" {
 			h.OnTranscript(c.id, m.UtteranceID, m.Text)
 		}
+	case MsgPair:
+		if h.OnPair != nil {
+			go h.OnPair(c.id)
+		}
 	case MsgPing:
 		c.sendJSON(map[string]string{"type": MsgPong})
 	default:

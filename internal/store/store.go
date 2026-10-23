@@ -188,6 +188,36 @@ func (s *Store) UpdateLocation(deviceID string, p GeoPoint) error {
 	return nil
 }
 
+// FindDevices matches devices by exact id or by display name (spaces and
+// case ignored), e.g. a licence plate "沪A 12345".
+func (s *Store) FindDevices(q string) []DeviceView {
+	norm := func(x string) string {
+		return strings.ToUpper(strings.Join(strings.Fields(x), ""))
+	}
+	nq := norm(q)
+	if nq == "" {
+		return nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if d, ok := s.devices[q]; ok {
+		return []DeviceView{d.view()}
+	}
+	var exact, partial []DeviceView
+	for _, d := range s.devices {
+		switch n := norm(d.Name); {
+		case n == nq:
+			exact = append(exact, d.view())
+		case len([]rune(nq)) >= 3 && strings.Contains(n, nq):
+			partial = append(partial, d.view())
+		}
+	}
+	if len(exact) > 0 {
+		return exact
+	}
+	return partial
+}
+
 // ---- groups ----
 
 type CreateGroupInput struct {

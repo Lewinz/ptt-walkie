@@ -10,6 +10,7 @@ import (
 	"github.com/plant-squad/ptt-walkie/internal/ai"
 	"github.com/plant-squad/ptt-walkie/internal/api"
 	"github.com/plant-squad/ptt-walkie/internal/archive"
+	"github.com/plant-squad/ptt-walkie/internal/social"
 	"github.com/plant-squad/ptt-walkie/internal/store"
 	"github.com/plant-squad/ptt-walkie/internal/voice"
 )
@@ -20,7 +21,8 @@ type Deps struct {
 	API            *api.Server
 	Hub            *voice.Hub
 	Archive        *archive.Handler
-	AI             *ai.Service // optional; enables summarize_missed
+	AI             *ai.Service     // optional; enables summarize_missed
+	Social         *social.Service // optional; enables pairing and invites
 	NearbyRadiusKm float64
 }
 
@@ -118,6 +120,21 @@ func NewServer(d Deps) *Server {
 			Description: "获取群的房间号和入群链接，用于告诉别人怎么加入。用户说「房间号是多少」「怎么让别人进群」时调用。",
 			InputSchema: schema(props{"query": str("群，留空为当前群")}),
 			handler:     t.shareGroup},
+		{Name: "pair_nearby", Title: "碰一碰配对",
+			Description: "和身边的另一台对讲机配对，自动建一个两人的临时群。两台设备需要在几秒内同时发起（用户说「配对」「和旁边的车配对」「碰一碰」）。会等待最多 8 秒。",
+			InputSchema: schema(props{}),
+			handler:     t.pairNearby},
+		{Name: "invite_member", Title: "邀请成员",
+			Description: "邀请指定的人（按车牌号、设备名或设备 ID）加入群，对方设备会收到邀请提示。用户说「邀请沪A12345进车队群」「把老王拉进来」时调用。",
+			InputSchema: schema(props{
+				"target": str("被邀请人的车牌号、设备名或设备 ID"),
+				"query":  str("邀请进哪个群，留空为当前群"),
+			}, "target"),
+			handler: t.inviteMember},
+		{Name: "accept_invite", Title: "接受邀请",
+			Description: "接受别人发来的入群邀请。用户说「接受邀请」「同意」「好的我加入」时调用。",
+			InputSchema: schema(props{}),
+			handler:     t.acceptInvite},
 		{Name: "dissolve_group", Title: "解散群",
 			Description: "解散一个群（仅车队长可操作）。用户明确说「解散这个群」时调用。",
 			InputSchema: schema(props{"query": str("群，留空为当前群")}),
@@ -636,4 +653,65 @@ func (t *tools) summarize(ctx context.Context, c Caller, a Args) Result {
 		return errResult("摘要失败：%v", err)
 	}
 	return Result{Text: sum.Text, Data: sum}
+}
+
+func (t *tools) pairNearby(ctx context.Context, c Caller, _ Args) Result {
+	if c.DeviceID == "" {
+		return errNoDevice
+	}
+	if t.Social == nil {
+		return errResult("配对功能未启用。")
+	}
+	g, err := t.Social.Pair(ctx, c.DeviceID)
+	if errors.Is(err, social.ErrNoPartner) {
+		return errResult("没有找到同时配对的设备，请两台对讲机一起说「配对」。")
+	}
+	if err != nil {
+		return errResult("配对失败：%v", err)
+	}
+	return Result{Text: fmt.Sprintf("配对成功，已进入临时对讲%s，房间号%s。", g.Name, SpokenCode(g.Code)), Data: g}
+}
+
+func (t *tools) inviteMember(_ context.Context, c Caller, a Args) Result {
+	if c.DeviceID == "" {
+		return errNoDevice
+	}
+	if t.Social == nil {
+		return errResult("邀请功能未启用。")
+	}
+	g, fail := t.target(c.DeviceID, a.String("query"))
+	if fail != nil {
+		return *fail
+	}
+	who := a.String("target")
+	targets, err := t.Social.Invite(c.DeviceID, g.ID, who)
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		return errResult("没有找到「%s」的对讲机。可以把房间号%s告诉对方。", who, SpokenCode(g.Code))
+	case errors.Is(err, store.ErrNotMember):
+		return errResult("你不在%s里，不能邀请别人。", g.Name)
+	case err != nil:
+		return errResult("邀请失败：%v", err)
+	}
+	names := make([]string, len(targets))
+	for i, d := range targets {
+		names[i] = d.Name
+	}
+	return Result{Text: fmt.Sprintf("已邀请%s加入%s，对方说「接受邀请」就能进群。", strings.Join(names, "、"), g.Name),
+		Data: map[string]any{"invited": targets}}
+}
+
+func (t *tools) acceptInvite(_ context.Context, c Caller, _ Args) Result {
+	if c.DeviceID == "" {
+		return errNoDevice
+	}
+	if t.Social == nil {
+		return errResult("邀请功能未启用。")
+	}
+	g, inv, err := t.Social.Accept(c.DeviceID, "")
+	if err != nil {
+		return errResult("你没有待处理的邀请。")
+	}
+	st := t.API.Status(g)
+	return Result{Text: fmt.Sprintf("已接受%s的邀请，加入%s，%d人在线。", inv.FromName, g.Name, st.OnlineCount), Data: st}
 }

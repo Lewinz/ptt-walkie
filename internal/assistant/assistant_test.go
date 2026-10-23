@@ -58,6 +58,13 @@ func TestParseIntent(t *testing.T) {
 		{"退出这个群", "leave_group", map[string]any{}},
 		{"退出老乡群", "leave_group", map[string]any{"query": "老乡群"}},
 		{"解散这个群", "dissolve_group", map[string]any{}},
+		{"和旁边的车配对", "pair_nearby", map[string]any{}},
+		{"碰一碰", "pair_nearby", map[string]any{}},
+		{"邀请沪A12345进车队群", "invite_member", map[string]any{"target": "沪A12345", "query": "车队群"}},
+		{"把老王拉进来", "invite_member", map[string]any{"target": "老王"}},
+		{"邀请京B67890", "invite_member", map[string]any{"target": "京B67890"}},
+		{"怎么邀请别人进群", "share_group", map[string]any{}},
+		{"接受邀请", "accept_invite", map[string]any{}},
 	}
 	for _, c := range cases {
 		got, ok := ParseIntent(c.text)

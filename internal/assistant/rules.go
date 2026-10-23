@@ -142,6 +142,18 @@ var rules = []rule{
 	{re(`^(?:告诉|通知)(大家|群里|所有人)` + sep + `(.+)$`), func(m []string, _ string) Intent {
 		return intent("send_text_message", "text", m[2])
 	}},
+	{re(`(接受|同意)(邀请)?$|^好的?我加入`), func(m []string, _ string) Intent {
+		return intent("accept_invite")
+	}},
+	{re(`配对|碰一碰`), func(m []string, _ string) Intent {
+		return intent("pair_nearby")
+	}},
+	{re(`^(?:邀请|把|拉)(.+?)(?:加入|进入|拉进|拉到|进|到)(.*?)(?:来|里)?$`), func(m []string, _ string) Intent {
+		return inviteIntent(m[1], m[2])
+	}},
+	{re(`^邀请(.+)$`), func(m []string, _ string) Intent {
+		return inviteIntent(m[1], "")
+	}},
 	{re(`(?:建|创建|新建|拉)一?个?(?:附近|周边)的?(?:临时)?群(?:叫做?|名叫)?` + sep + `(.*)$`), func(m []string, _ string) Intent {
 		name := strings.TrimSpace(m[1])
 		if name == "" {
@@ -201,6 +213,16 @@ var rules = []rule{
 	{re(`(?:切换到|切到|切回|换到|转到|回到|切换|去)` + sep + `(.+)$`), func(m []string, _ string) Intent {
 		return intent("switch_group", "query", m[1])
 	}},
+}
+
+// inviteIntent maps "邀请X进Y群"; generic targets ("别人") mean "share".
+func inviteIntent(target, group string) Intent {
+	target = strings.TrimSpace(target)
+	switch target {
+	case "", "别人", "朋友", "大家", "人", "其他人", "他们":
+		return intent("share_group")
+	}
+	return intent("invite_member", "target", target, "query", groupRef(group))
 }
 
 var trailing = re(`[。！？!?，,~～ ]+$|(吧|啊|呀|哈|一下|好吗|可以吗)+$`)

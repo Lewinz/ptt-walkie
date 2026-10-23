@@ -48,6 +48,12 @@
     <span class="ptt-sub">空格键也可以</span>
   </button>
 
+  <div id="invite-banner" class="invite-banner" hidden>
+    <span id="invite-text"></span>
+    <button class="btn primary small" id="invite-accept">接受</button>
+    <button class="btn small" id="invite-dismiss">忽略</button>
+  </div>
+
   <section class="assist">
     <button id="ai-btn" class="btn ai-btn" title="按住说出指令，短按打字">🤖 AI 助手 <small>按住说指令</small></button>
     <form id="ai-form" class="row">
@@ -72,6 +78,7 @@
 
   <details class="panel">
     <summary>入群 / 建群</summary>
+    <button class="btn pair-btn" id="btn-pair" type="button">📲 碰一碰配对（两台设备 8 秒内同时按）</button>
     <form id="join-form" class="row">
       <input id="join-code" inputmode="numeric" placeholder="房间号" maxlength="6">
       <button class="btn primary">加入</button>
