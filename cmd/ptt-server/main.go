@@ -88,9 +88,18 @@ func main() {
 		defer cancel()
 		srv.Shutdown(shutdownCtx)
 	}()
-	slog.Info("ptt-server listening", "addr", cfg.Addr, "data", cfg.DataDir)
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	slog.Info("ptt-server listening", "addr", cfg.Addr, "data", cfg.DataDir, "tls", cfg.TLSCert != "",
+		"device", cfg.BaseURL+"/device", "admin", cfg.BaseURL+"/admin", "mcp", cfg.BaseURL+"/mcp/d/{device_id}")
+	if cfg.TLSCert != "" {
+		err = srv.ListenAndServeTLS(cfg.TLSCert, cfg.TLSKey)
+	} else {
+		err = srv.ListenAndServe()
+	}
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("serve", "err", err)
 		os.Exit(1)
+	}
+	if err := st.Flush(); err != nil {
+		slog.Error("flush state", "err", err)
 	}
 }

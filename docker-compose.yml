@@ -1,0 +1,17 @@
+services:
+  ptt:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ptt-data:/data
+    environment:
+      PTT_BASE_URL: ${PTT_BASE_URL:-http://localhost:8080}
+      PTT_AI_KEY: ${PTT_AI_KEY:-}
+      PTT_AI_MODEL: ${PTT_AI_MODEL:-deepseek-v3}
+      PTT_AUTH_TOKEN: ${PTT_AUTH_TOKEN:-}
+      PTT_MCP_ENDPOINT: ${PTT_MCP_ENDPOINT:-}
+    restart: unless-stopped
+
+volumes:
+  ptt-data:
