@@ -475,7 +475,7 @@ func (s *Store) dissolve(groupID string) ([]Event, bool) {
 	delete(s.groups, groupID)
 	delete(s.byCode, g.Code)
 	s.dirty = true
-	return append([]Event{{Type: EvDissolved, GroupID: groupID, Members: members}}, evs...), true
+	return append([]Event{{Type: EvDissolved, GroupID: groupID, Name: g.Name, Members: members}}, evs...), true
 }
 
 // DissolveIdleTemp removes temporary groups with no activity for idle.

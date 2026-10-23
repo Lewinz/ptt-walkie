@@ -38,7 +38,8 @@ type Server struct {
 type MemberStatus struct {
 	store.Member
 	Name     string `json:"name"`
-	Online   bool   `json:"online"`
+	Online   bool   `json:"online"` // connected to the voice plane
+	Tuned    bool   `json:"tuned"`  // online and listening on this group
 	Speaking bool   `json:"speaking"`
 }
 
@@ -46,7 +47,7 @@ type MemberStatus struct {
 type GroupStatus struct {
 	store.GroupView
 	Members     []MemberStatus `json:"members"`
-	OnlineCount int            `json:"online_count"`
+	OnlineCount int            `json:"online_count"` // members tuned in right now
 	Speaker     string         `json:"speaker,omitempty"`
 	ShareURL    string         `json:"share_url"`
 }
@@ -67,8 +68,9 @@ func (s *Server) Status(g store.GroupView) GroupStatus {
 		ms := MemberStatus{Member: m, Online: p.Online(m.DeviceID), Speaking: st.Speaker == m.DeviceID}
 		if d, err := s.Store.Device(m.DeviceID); err == nil {
 			ms.Name = d.Name
+			ms.Tuned = ms.Online && d.CurrentGroup == g.ID
 		}
-		if ms.Online {
+		if ms.Tuned {
 			st.OnlineCount++
 		}
 		st.Members = append(st.Members, ms)
@@ -415,37 +417,44 @@ func (s *Server) switchGroup(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &req) {
 		return
 	}
-	dev := r.PathValue("id")
-	var (
-		g   store.GroupView
-		err error
-	)
-	switch {
-	case req.GroupID != "":
-		g, err = s.Store.SwitchGroup(dev, req.GroupID)
-	case req.Delta != 0:
-		g, err = s.Store.CycleGroup(dev, req.Delta)
-	case req.Query != "":
-		res := s.Store.Resolve(dev, req.Query)
-		switch {
-		case res.Group != nil && res.ByCode:
-			g, err = s.Store.JoinGroup(dev, res.Group.ID)
-		case res.Group != nil:
-			g, err = s.Store.SwitchGroup(dev, res.Group.ID)
-		case len(res.Candidates) > 0:
-			writeJSON(w, http.StatusConflict, map[string]any{"error": "ambiguous", "candidates": res.Candidates})
-			return
-		default:
-			err = store.ErrNotFound
-		}
-	default:
-		err = store.ErrInvalidInput
+	g, candidates, err := s.Switch(r.PathValue("id"), req.GroupID, req.Query, req.Delta)
+	if len(candidates) > 0 {
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "ambiguous", "candidates": candidates})
+		return
 	}
 	if err != nil {
 		writeErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, s.Status(g))
+}
+
+// Switch changes a device's current group by explicit id, by free-text query
+// (name or room code; codes auto-join) or by stepping delta through its list.
+// Ambiguous name queries return candidates and no error.
+func (s *Server) Switch(dev, groupID, query string, delta int) (store.GroupView, []store.GroupView, error) {
+	switch {
+	case groupID != "":
+		g, err := s.Store.SwitchGroup(dev, groupID)
+		return g, nil, err
+	case delta != 0:
+		g, err := s.Store.CycleGroup(dev, delta)
+		return g, nil, err
+	case strings.TrimSpace(query) != "":
+		res := s.Store.Resolve(dev, query)
+		switch {
+		case res.Group != nil && res.ByCode:
+			g, err := s.Store.JoinGroup(dev, res.Group.ID)
+			return g, nil, err
+		case res.Group != nil:
+			g, err := s.Store.SwitchGroup(dev, res.Group.ID)
+			return g, nil, err
+		case len(res.Candidates) > 0:
+			return store.GroupView{}, res.Candidates, nil
+		}
+		return store.GroupView{}, nil, store.ErrNotFound
+	}
+	return store.GroupView{}, nil, store.ErrInvalidInput
 }
 
 // ---- helpers ----
