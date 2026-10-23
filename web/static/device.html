@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>灵矽对讲机 · 模拟器</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="device-page">
+<div id="power" class="overlay">
+  <div class="power-card">
+    <h1>灵矽对讲机</h1>
+    <p>浏览器模拟设备 · 每个标签页是一台独立的对讲机</p>
+    <label>设备名 <input id="power-name" maxlength="16" placeholder="如：老王"></label>
+    <button id="power-on" class="btn primary big">开机</button>
+    <p class="hint" id="codec-hint"></p>
+  </div>
+</div>
+
+<main class="walkie">
+  <header class="walkie-head">
+    <span class="dot" id="conn-dot" title="连接状态"></span>
+    <span id="dev-name" class="dev-name" title="点击改名"></span>
+    <span id="dev-id" class="dev-id"></span>
+    <a href="/admin" class="link" target="_blank">管理端</a>
+  </header>
+
+  <section class="lcd" id="lcd">
+    <div class="lcd-row small">
+      <span id="lcd-type"></span>
+      <span id="lcd-flags"></span>
+    </div>
+    <div class="lcd-channel" id="lcd-channel">未加入群</div>
+    <div class="lcd-row">
+      <span id="lcd-code"></span>
+      <span id="lcd-online"></span>
+    </div>
+    <div class="lcd-status" id="lcd-status">待机</div>
+  </section>
+
+  <section class="knobs">
+    <button class="btn knob" id="prev" title="上一个频道">◀ 上一个</button>
+    <button class="btn knob" id="next" title="下一个频道">下一个 ▶</button>
+  </section>
+
+  <button id="ptt" class="ptt" disabled>
+    <span class="ptt-label">按住说话</span>
+    <span class="ptt-sub">空格键也可以</span>
+  </button>
+
+  <section class="fn-row">
+    <button class="btn" id="btn-replay">回放</button>
+    <button class="btn" id="btn-mute">静音</button>
+    <button class="btn" id="btn-leader">只听队长</button>
+    <button class="btn" id="btn-locate">定位</button>
+  </section>
+
+  <details class="panel" open>
+    <summary>我的群</summary>
+    <ul id="group-list" class="group-list"></ul>
+  </details>
+
+  <details class="panel">
+    <summary>入群 / 建群</summary>
+    <form id="join-form" class="row">
+      <input id="join-code" inputmode="numeric" placeholder="房间号" maxlength="6">
+      <button class="btn primary">加入</button>
+    </form>
+    <form id="create-form" class="col">
+      <input id="create-name" placeholder="群名称，如：京沪线车队" maxlength="20">
+      <div class="row">
+        <select id="create-vis">
+          <option value="code">仅房间号</option>
+          <option value="nearby">附近可见</option>
+          <option value="route">路线可见</option>
+        </select>
+        <select id="create-type">
+          <option value="fixed">固定群</option>
+          <option value="temp">临时群</option>
+          <option value="emergency">紧急频道</option>
+        </select>
+      </div>
+      <input id="create-route" placeholder="路线（路线可见时），如：上海-成都 G42" hidden>
+      <button class="btn primary">建群</button>
+    </form>
+    <div id="nearby-box" hidden>
+      <h4>附近的群</h4>
+      <ul id="nearby-list" class="group-list"></ul>
+    </div>
+  </details>
+
+  <details class="panel">
+    <summary>日志</summary>
+    <ol id="log" class="log"></ol>
+  </details>
+</main>
+<script src="/static/audio.js"></script>
+<script src="/static/device.js"></script>
+</body>
+</html>

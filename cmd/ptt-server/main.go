@@ -19,6 +19,7 @@ import (
 	"github.com/plant-squad/ptt-walkie/internal/mcp"
 	"github.com/plant-squad/ptt-walkie/internal/store"
 	"github.com/plant-squad/ptt-walkie/internal/voice"
+	"github.com/plant-squad/ptt-walkie/web"
 )
 
 func main() {
@@ -57,6 +58,7 @@ func main() {
 
 	mcpSrv := mcp.NewServer(mcp.Deps{Store: st, API: apiSrv, Hub: hub, Archive: arcHandler, NearbyRadiusKm: cfg.NearbyRadiusKm})
 	(&mcp.HTTPHandler{Server: mcpSrv, Token: cfg.AuthToken}).Register(mux)
+	web.Register(mux)
 	for _, ep := range mcp.ParseEndpoints(cfg.MCPEndpoint) {
 		go mcpSrv.RunBridge(ctx, ep)
 	}
