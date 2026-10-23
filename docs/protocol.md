@@ -33,6 +33,7 @@ ws(s)://<host>/ws?device_id=<设备唯一 ID>&name=<显示名，可选>
 | `ptt_stop` | | 松开 PTT，释放话权 |
 | `switch` | `group_id` / `query` / `delta` | 切群：精确 ID、名称或房间号（模糊）、`delta: 1/-1` 对应旋钮下一个 / 上一个 |
 | `location` | `lat`, `lng` | 上报 GPS，用于附近群 |
+| `pair` | | 「碰一碰」配对键：两台设备 8 秒内都按下（双方有 GPS 时还需相距 300m 内）即自动建两人临时群；失败时收到 `notice` |
 | `transcript` | `utterance_id`, `text` | 可选：发言者自带的转写（浏览器 Web Speech API）；仅在服务端未配置 ASR 时采纳，且只接受发言者本人提交 |
 | `ping` | | 应用层心跳，回 `pong` |
 | *二进制* | Opus 包 | 仅在持有话权时转发，否则丢弃 |
@@ -49,6 +50,7 @@ ws(s)://<host>/ws?device_id=<设备唯一 ID>&name=<显示名，可选>
 | `talk_stop` | `utterance_id`, `reason`, `duration_ms` | 该段结束；`reason: preempted` 表示被更高优先级语音打断 |
 | `presence` | `group_id`, `online_count`, `online`, `member_count` | 当前频道在线成员变化 |
 | `transcript` | `utterance_id`, `speaker_name`, `text`, `alert` | 一段发言的转写（字幕），`alert` 为命中的预警词 |
+| `invite` | `invite{group_id, group_name, code, from_name}`, `announce` | 有人邀请本机入群；设备可提示并在用户确认后调用 `POST /api/devices/{id}/accept`，或对智能体说「接受邀请」 |
 | `notice` | `level: info\|alert`, `text` | 短文本通知（群解散、关键词预警等），设备可 TTS 播报；`alert` 级别应先播放预警音 |
 | `error` | `code?`, `message`, `candidates?` | 错误；切群名称有歧义时 `code: ambiguous` 并给出候选名 |
 | *二进制* | Opus 包 | 当前 `talk_start` 对应语音段的音频 |

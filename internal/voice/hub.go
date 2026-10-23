@@ -38,6 +38,7 @@ type Hub struct {
 	// Hooks, set before serving.
 	OnTranscript func(deviceID, utteranceID, text string)
 	OnReconnect  func(deviceID string, offlineAt time.Time)
+	OnPair       func(deviceID string) // "碰一碰" pair button pressed
 }
 
 func NewHub(st *store.Store, apiSrv *api.Server, maxTalk time.Duration) *Hub {
@@ -475,6 +476,18 @@ func (h *Hub) SendGroup(groupID string, msg any) {
 			c.sendRaw(data)
 		}
 	}
+}
+
+// Send delivers an arbitrary JSON message to one device.
+func (h *Hub) Send(deviceID string, msg any) bool {
+	h.mu.Lock()
+	c := h.conns[deviceID]
+	h.mu.Unlock()
+	if c == nil {
+		return false
+	}
+	c.sendJSON(msg)
+	return true
 }
 
 // NotifyGroup sends a notice to every device tuned to the group.

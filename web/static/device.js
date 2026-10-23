@@ -209,6 +209,15 @@ function onMessage(m) {
       if (!mine) showSubtitle(m);
       break;
     }
+    case 'invite': {
+      const inv = m.invite;
+      state.invite = inv;
+      $('invite-text').textContent = `${inv.from_name} 邀请你加入「${inv.group_name}」（房间 ${inv.code}）`;
+      $('invite-banner').hidden = false;
+      PTTAudio.tones.permit();
+      announce(m.announce);
+      break;
+    }
     case 'notice':
       if (m.level === 'alert') {
         PTTAudio.tones.alert();
@@ -396,6 +405,33 @@ function bindControls() {
     } catch (e) {
       PTTAudio.tones.deny();
       log(e.status === 409 ? '没有可以回放的语音' : '回放失败：' + e.message, 'warn');
+    }
+  };
+
+  $('invite-accept').onclick = async () => {
+    $('invite-banner').hidden = true;
+    try {
+      const g = await api('POST', `/api/devices/${encodeURIComponent(deviceId)}/accept`, { group_id: state.invite && state.invite.group_id });
+      log(`已接受邀请，加入 ${g.name}`);
+    } catch (e) {
+      log('接受邀请失败：' + e.message, 'err');
+    }
+  };
+  $('invite-dismiss').onclick = () => { $('invite-banner').hidden = true; };
+
+  $('btn-pair').onclick = async () => {
+    const btn = $('btn-pair');
+    if (btn.classList.contains('waiting')) return;
+    btn.classList.add('waiting');
+    log('等待另一台设备同时按配对…');
+    try {
+      const g = await api('POST', `/api/devices/${encodeURIComponent(deviceId)}/pair`);
+      log(`配对成功：${g.name}（房间 ${g.code}）`);
+    } catch (e) {
+      PTTAudio.tones.deny();
+      log(e.status === 409 ? '没有找到同时配对的设备' : '配对失败：' + e.message, 'warn');
+    } finally {
+      btn.classList.remove('waiting');
     }
   };
 

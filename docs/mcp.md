@@ -58,6 +58,9 @@ npx @modelcontextprotocol/inspector  # Transport: Streamable HTTP, URL: http://l
 | `summarize_missed` | 我错过了什么 / 最近半小时群里说了啥 | LLM 摘要，未配置时降级为转写列表 / 发言人统计 |
 | `send_text_message` | 给车队群发：前面堵车 | 文字留言，在线成员设备播报 |
 | `share_group` | 房间号是多少 / 怎么拉人进群 | 返回房间号、链接、二维码地址 |
+| `pair_nearby` | 和旁边的车配对 / 碰一碰 | 两台设备 8 秒内同时发起，自动建两人临时群 |
+| `invite_member` | 邀请沪A12345进车队群 / 把老王拉进来 | 按车牌、设备名或 ID 匹配（忽略空格大小写），对方设备收到邀请 |
+| `accept_invite` | 接受邀请 | 加入最近一条邀请（30 分钟有效） |
 | `dissolve_group` | 解散这个群 | 仅车队长 |
 
 ## 推荐智能体提示词

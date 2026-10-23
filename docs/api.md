@@ -45,6 +45,15 @@
 | GET | `/api/recordings/{id}/audio.ogg` | 音频下载 / 浏览器直接播放 |
 | POST | `/api/devices/{id}/replay` | 在设备上回放 `{n, group_id?, utterance_id?}`：按时间顺序实时推送，排除本机发言；对讲实时语音会打断回放；设备离线或无可回放内容返回 409 |
 
+## 碰一碰与邀请
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/devices/{id}/pair` | 长轮询最多 8 秒等待另一台设备同时配对；成功返回新建的临时群，超时 409 |
+| POST | `/api/groups/{id}/invite` | 邀请 `{from, target}`，target 为车牌 / 设备名 / 设备 ID |
+| GET | `/api/devices/{id}/invites` | 待处理邀请（30 分钟有效，新→旧） |
+| POST | `/api/devices/{id}/accept` | 接受邀请 `{group_id?}`，缺省接受最新一条 |
+
 ## 车队管理
 
 | 方法 | 路径 | 说明 |

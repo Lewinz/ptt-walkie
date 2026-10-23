@@ -89,7 +89,7 @@ leave_group(group_id)
 mute_group(group_id, minutes)
 replay_last(n=1)
 summarize_missed(since)
-invite(contact | plate_no) # 可选
+invite(contact | plate_no) # 已实现：invite_member / accept_invite
 ```
 
 前提：MCP 工具被调用时必须能拿到发起设备的身份（device_id / 用户），否则无法确定"我"是谁。

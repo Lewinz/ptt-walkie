@@ -21,6 +21,7 @@ import (
 	"github.com/plant-squad/ptt-walkie/internal/kodo"
 	"github.com/plant-squad/ptt-walkie/internal/lifecycle"
 	"github.com/plant-squad/ptt-walkie/internal/mcp"
+	"github.com/plant-squad/ptt-walkie/internal/social"
 	"github.com/plant-squad/ptt-walkie/internal/store"
 	"github.com/plant-squad/ptt-walkie/internal/voice"
 	"github.com/plant-squad/ptt-walkie/web"
@@ -81,7 +82,12 @@ func main() {
 	aiSvc.Attach()
 	aiSvc.Register(mux)
 
-	mcpSrv := mcp.NewServer(mcp.Deps{Store: st, API: apiSrv, Hub: hub, Archive: arcHandler, AI: aiSvc, NearbyRadiusKm: cfg.NearbyRadiusKm})
+	soc := &social.Service{Store: st, Hub: hub}
+	hub.OnPair = soc.HandlePairButton
+	soc.Register(mux)
+
+	mcpSrv := mcp.NewServer(mcp.Deps{Store: st, API: apiSrv, Hub: hub, Archive: arcHandler, AI: aiSvc, Social: soc,
+		NearbyRadiusKm: cfg.NearbyRadiusKm})
 	(&mcp.HTTPHandler{Server: mcpSrv, Token: cfg.AuthToken}).Register(mux)
 	(&assistant.Assistant{MCP: mcpSrv, LLM: aiSvc.Client}).Register(mux)
 	web.Register(mux)

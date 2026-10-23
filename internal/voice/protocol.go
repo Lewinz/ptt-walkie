@@ -18,6 +18,9 @@ const (
 	// MsgTranscript lets a capable client (e.g. the browser simulator with
 	// Web Speech API) supply the text of its own utterance.
 	MsgTranscript = "transcript"
+	// MsgPair: the "碰一碰" button; two devices pressing within a few
+	// seconds (and close by, when GPS is known) get a fresh temp group.
+	MsgPair = "pair"
 )
 
 // Server → client message types.
