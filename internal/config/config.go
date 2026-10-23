@@ -30,8 +30,12 @@ type Config struct {
 	// Optional outbound MCP endpoints (xiaozhi / Lingxi "MCP 接入点" style):
 	// "wss://…?token=…|device_id; wss://…|device_id2".
 	MCPEndpoint string
-	// Optional shared token required on /mcp and admin APIs.
+	// Optional shared token required on /mcp.
 	AuthToken string
+	// Optional TLS. Browsers only grant microphone access on HTTPS (or
+	// localhost), so set these when serving the simulator on a LAN / domain.
+	TLSCert string
+	TLSKey  string
 }
 
 func Load() Config {
@@ -50,6 +54,8 @@ func Load() Config {
 		AlertWords:     splitList(env("PTT_ALERT_WORDS", "事故,查车,封路,追尾,堵车,危险,救命,着火")),
 		MCPEndpoint:    env("PTT_MCP_ENDPOINT", ""),
 		AuthToken:      env("PTT_AUTH_TOKEN", ""),
+		TLSCert:        env("PTT_TLS_CERT", ""),
+		TLSKey:         env("PTT_TLS_KEY", ""),
 	}
 }
 
