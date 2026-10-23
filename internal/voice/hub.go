@@ -288,7 +288,8 @@ func (h *Hub) deliverLocked(l *Conn, u *Utterance, pkt []byte) {
 
 func talkStart(u *Utterance) talkMsg {
 	return talkMsg{Type: MsgTalkStart, UtteranceID: u.ID, GroupID: u.GroupID, GroupName: u.GroupName,
-		SpeakerID: u.SpeakerID, SpeakerName: u.SpeakerName, Leader: u.Leader, Priority: u.Priority}
+		SpeakerID: u.SpeakerID, SpeakerName: u.SpeakerName, Leader: u.Leader, Priority: u.Priority,
+		Replay: u.Priority == PriorityReplay}
 }
 
 func talkStop(u *Utterance, reason string) talkMsg {

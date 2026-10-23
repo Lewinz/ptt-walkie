@@ -29,3 +29,15 @@
 | PUT | `/api/devices/{id}` | 注册 / 改名 `{name}` |
 | POST | `/api/devices/{id}/location` | 上报位置 `{lat, lng}` |
 | POST | `/api/devices/{id}/switch` | 切群：`{group_id}`、`{query}`（名称模糊或房间号）、`{delta: 1\|-1}`（下一个 / 上一个）；名称歧义时返回 409 与候选列表 |
+
+## 发言存档与回放
+
+每段 PTT 发言（≥3 帧，过滤误触）存为标准 Ogg Opus 文件（`$PTT_DATA_DIR/recordings/{group}/{utterance}.ogg`），索引为 JSON Lines（`index.jsonl`，后写覆盖先写，便于追加转写结果）。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/groups/{id}/recordings?limit=20` | 最近发言（新→旧），含发言人、时长、转写、预警词 |
+| GET | `/api/groups/{id}/recordings?since=RFC3339` | 某时刻之后的发言（旧→新），用于「我错过了什么」 |
+| GET | `/api/recordings/{id}` | 单条元数据 |
+| GET | `/api/recordings/{id}/audio.ogg` | 音频下载 / 浏览器直接播放 |
+| POST | `/api/devices/{id}/replay` | 在设备上回放 `{n, group_id?, utterance_id?}`：按时间顺序实时推送，排除本机发言；对讲实时语音会打断回放；设备离线或无可回放内容返回 409 |

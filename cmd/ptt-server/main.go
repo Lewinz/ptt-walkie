@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/plant-squad/ptt-walkie/internal/api"
+	"github.com/plant-squad/ptt-walkie/internal/archive"
 	"github.com/plant-squad/ptt-walkie/internal/config"
 	"github.com/plant-squad/ptt-walkie/internal/store"
 	"github.com/plant-squad/ptt-walkie/internal/voice"
@@ -42,6 +43,16 @@ func main() {
 	apiSrv.Presence = hub
 	apiSrv.Register(mux)
 	mux.HandleFunc("GET /ws", hub.ServeWS)
+
+	arc, err := archive.Open(filepath.Join(cfg.DataDir, "recordings"))
+	if err != nil {
+		slog.Error("open archive", "err", err)
+		os.Exit(1)
+	}
+	defer arc.Close()
+	hub.AddRecorder(arc)
+	arcHandler := &archive.Handler{Archive: arc, Store: st, Hub: hub}
+	arcHandler.Register(mux)
 	go hub.Run(ctx)
 
 	srv := &http.Server{Addr: cfg.Addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
