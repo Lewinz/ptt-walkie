@@ -30,10 +30,11 @@ var (
 )
 
 type pairReq struct {
-	device string
-	at     time.Time
-	loc    *store.GeoPoint
-	result chan store.GroupView
+	matched bool // set under s.mu when a partner claims this request
+	device  string
+	at      time.Time
+	loc     *store.GeoPoint
+	result  chan store.GroupView
 }
 
 type Invite struct {
@@ -96,6 +97,7 @@ func (s *Service) Pair(ctx context.Context, deviceID string) (store.GroupView, e
 		case now.Sub(p.at) > s.window() || p.device == deviceID:
 		case partner == nil && near(p.loc, me.Location):
 			partner = p
+			p.matched = true
 		default:
 			live = append(live, p)
 		}
@@ -106,12 +108,28 @@ func (s *Service) Pair(ctx context.Context, deviceID string) (store.GroupView, e
 		s.pending = append(s.pending, req)
 		s.mu.Unlock()
 		select {
-		case g := <-req.result:
-			return g, nil
+		case g, ok := <-req.result:
+			if ok {
+				return g, nil
+			}
+			return store.GroupView{}, ErrNoPartner
 		case <-time.After(s.window()):
 		case <-ctx.Done():
 		}
 		s.mu.Lock()
+		if req.matched {
+			// A partner claimed us just as we gave up: it is creating the
+			// group right now, so wait for it rather than report failure.
+			s.mu.Unlock()
+			select {
+			case g, ok := <-req.result:
+				if ok {
+					return g, nil
+				}
+			case <-time.After(10 * time.Second):
+			}
+			return store.GroupView{}, ErrNoPartner
+		}
 		for i, p := range s.pending {
 			if p == req {
 				s.pending = append(s.pending[:i], s.pending[i+1:]...)
@@ -119,12 +137,6 @@ func (s *Service) Pair(ctx context.Context, deviceID string) (store.GroupView, e
 			}
 		}
 		s.mu.Unlock()
-		// A partner may have matched us just as we gave up.
-		select {
-		case g := <-req.result:
-			return g, nil
-		default:
-		}
 		return store.GroupView{}, ErrNoPartner
 	}
 	s.mu.Unlock()
@@ -133,10 +145,11 @@ func (s *Service) Pair(ctx context.Context, deviceID string) (store.GroupView, e
 	g, err := s.Store.CreateGroup(partner.device, store.CreateGroupInput{
 		Name: fmt.Sprintf("%s和%s", other.Name, me.Name), Type: store.GroupTemp,
 	})
-	if err != nil {
-		return store.GroupView{}, err
+	if err == nil {
+		g, err = s.Store.JoinGroup(deviceID, g.ID)
 	}
-	if g, err = s.Store.JoinGroup(deviceID, g.ID); err != nil {
+	if err != nil {
+		close(partner.result)
 		return store.GroupView{}, err
 	}
 	partner.result <- g

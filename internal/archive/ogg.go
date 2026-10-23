@@ -101,13 +101,17 @@ func (o *oggWriter) page(flags byte, granule int64, packet []byte) error {
 
 // EncodeOggOpus wraps raw Opus packets into an Ogg Opus stream.
 func EncodeOggOpus(w io.Writer, sampleRate, channels int, packets [][]byte) error {
-	o := &oggWriter{w: w, serial: 0x70747477} // "pttw"
+	// Granule positions include the pre-skip (RFC 7845 §4), else players
+	// trim the last 312 samples of audio.
+	o := &oggWriter{w: w, serial: 0x70747477, granule: 312} // "pttw"
 	head := make([]byte, 19)
 	copy(head, "OpusHead")
 	head[8] = 1
 	head[9] = byte(channels)
 	binary.LittleEndian.PutUint16(head[10:], 312) // pre-skip
 	binary.LittleEndian.PutUint32(head[12:], uint32(sampleRate))
+	start := o.granule
+	o.granule = 0
 	if err := o.page(0x02, 0, head); err != nil {
 		return err
 	}
@@ -119,6 +123,7 @@ func EncodeOggOpus(w io.Writer, sampleRate, channels int, packets [][]byte) erro
 	if err := o.page(0, 0, tags); err != nil {
 		return err
 	}
+	o.granule = start
 	for i, p := range packets {
 		o.granule += int64(PacketSamples(p))
 		flags := byte(0)

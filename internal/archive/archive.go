@@ -183,6 +183,12 @@ func (a *Archive) persist(r Record) {
 		r = cur
 	}
 	a.appendIndex(r)
+	// The file is the source of truth now; free the in-memory copy.
+	a.mu.Lock()
+	if cur, ok := a.byID[r.ID]; ok {
+		cur.packets = nil
+	}
+	a.mu.Unlock()
 	a.subMu.RLock()
 	subs := slices.Clone(a.subs)
 	a.subMu.RUnlock()

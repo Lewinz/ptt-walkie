@@ -1,6 +1,7 @@
 package store
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -151,7 +152,7 @@ func TestNearbyAndRoute(t *testing.T) {
 	}
 }
 
-func TestDissolveIdleTemp(t *testing.T) {
+func TestDissolveIfIdle(t *testing.T) {
 	s := newStore(t)
 	now := time.Now()
 	s.now = func() time.Time { return now }
@@ -160,9 +161,18 @@ func TestDissolveIdleTemp(t *testing.T) {
 	s.SwitchGroup("a", tmp.ID)
 
 	now = now.Add(3 * time.Hour)
-	names := s.DissolveIdleTemp(2 * time.Hour)
-	if len(names) != 1 || names[0] != "临时" {
-		t.Fatalf("dissolved %v", names)
+	tmp, _ = s.Group(tmp.ID)
+	observed := tmp.LastActiveAt
+	s.Touch(tmp.ID) // someone spoke after the janitor looked
+	if s.DissolveIfIdle(tmp.ID, observed) {
+		t.Fatal("dissolved a group that just became active")
+	}
+	tmp, _ = s.Group(tmp.ID)
+	if s.DissolveIfIdle(fixed.ID, fixed.LastActiveAt) {
+		t.Fatal("fixed groups are never dissolved")
+	}
+	if !s.DissolveIfIdle(tmp.ID, tmp.LastActiveAt) {
+		t.Fatal("idle temp group not dissolved")
 	}
 	d, _ := s.Device("a")
 	if d.CurrentGroup != fixed.ID || len(d.Groups) != 1 {
@@ -195,5 +205,25 @@ func TestMuteAndPersistence(t *testing.T) {
 	}
 	if got, err := s2.GroupByCode(g.Code); err != nil || got.Name != "家人" {
 		t.Fatalf("code index not rebuilt: %v", err)
+	}
+}
+
+func TestFlushRetriesAfterFailure(t *testing.T) {
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	os.WriteFile(blocker, nil, 0o644) // a file where a directory is needed
+	s, _ := New(filepath.Join(dir, "state.json"))
+	s.path = filepath.Join(blocker, "state.json") // unwritable
+	s.CreateGroup("a", CreateGroupInput{Name: "车队"})
+	if err := s.Flush(); err == nil {
+		t.Fatal("expected write failure")
+	}
+	s.path = filepath.Join(dir, "state.json")
+	if err := s.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	s2, _ := New(s.path)
+	if len(s2.AllGroups()) != 1 {
+		t.Fatal("changes lost after a failed flush")
 	}
 }

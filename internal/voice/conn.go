@@ -201,6 +201,11 @@ func (h *Hub) handleMessage(c *Conn, m Inbound) {
 			h.SwitchNotify(c.id)
 		}
 	case MsgLocation:
+		// (0,0) is what a missing fix serialises to; never store it.
+		if m.Lat < -90 || m.Lat > 90 || m.Lng < -180 || m.Lng > 180 || (m.Lat == 0 && m.Lng == 0) {
+			c.sendJSON(map[string]string{"type": MsgError, "code": "bad_location", "message": "invalid location"})
+			return
+		}
 		h.st.UpdateLocation(c.id, store.GeoPoint{Lat: m.Lat, Lng: m.Lng})
 	case MsgTranscript:
 		if h.OnTranscript != nil && m.UtteranceID != "" && m.Text != "" {

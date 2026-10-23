@@ -15,6 +15,11 @@ import (
 	"github.com/plant-squad/ptt-walkie/internal/store"
 )
 
+type joinMark struct {
+	group string
+	at    time.Time
+}
+
 // Hub owns all live device connections and per-group floor state.
 //
 // Locking: h.mu guards conns, floors and every Conn's stream/dev fields.
@@ -32,7 +37,7 @@ type Hub struct {
 	conns   map[string]*Conn
 	floors  map[string]*Utterance // group id → active utterance
 	offline map[string]time.Time  // device id → when it last disconnected
-	joined  map[string]string     // device id → group it just joined (greet on switch)
+	joined  map[string]joinMark   // device id → group it just joined (greet on switch)
 	now     func() time.Time
 
 	// Hooks, set before serving.
@@ -50,7 +55,7 @@ func NewHub(st *store.Store, apiSrv *api.Server, maxTalk time.Duration) *Hub {
 		conns:       map[string]*Conn{},
 		floors:      map[string]*Utterance{},
 		offline:     map[string]time.Time{},
-		joined:      map[string]string{},
+		joined:      map[string]joinMark{},
 		now:         time.Now,
 	}
 	st.Subscribe(h.onEvent)
@@ -380,7 +385,7 @@ func (h *Hub) onEvent(ev store.Event) {
 		h.mu.Lock()
 		// Greet only live joins; an offline join is just stale on reconnect.
 		if h.conns[ev.DeviceID] != nil {
-			h.joined[ev.DeviceID] = ev.GroupID
+			h.joined[ev.DeviceID] = joinMark{group: ev.GroupID, at: h.now()}
 		}
 		h.mu.Unlock()
 		h.refresh(ev.DeviceID)
@@ -428,7 +433,10 @@ func (h *Hub) sendChannel(c *Conn, groupID, reason string) {
 	}
 	announce := h.announce(gs)
 	h.mu.Lock()
-	justJoined := groupID != "" && h.joined[c.id] == groupID
+	// Joins without a switch (e.g. batch import) leave a mark that must not
+	// turn a much later manual switch into a "welcome".
+	mark := h.joined[c.id]
+	justJoined := groupID != "" && mark.group == groupID && h.now().Sub(mark.at) < 5*time.Second
 	delete(h.joined, c.id)
 	h.mu.Unlock()
 	if justJoined && gs != nil {

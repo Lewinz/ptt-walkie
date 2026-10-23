@@ -63,7 +63,7 @@ open http://localhost:8080/admin    # 车队管理
 | `PTT_ASR_MODE` | `qiniu` | `qiniu`（`/voice/asr` 传录音 URL）或 `openai`（`/audio/transcriptions` 上传） |
 | `PTT_ASR_MODEL` | `asr` | ASR 模型名 |
 | `PTT_ALERT_WORDS` | 事故,查车,封路,… | 全局预警词（逗号分隔，模板另有补充） |
-| `PTT_AUTH_TOKEN` | — | `/mcp` 访问令牌（Bearer 或 `?token=`） |
+| `PTT_AUTH_TOKEN` | — | `/mcp` 访问令牌，同时保护无设备身份的管理操作（解散、设队长、批量导入）；管理端用 `/admin?token=…` 打开一次即可（Bearer 或 `?token=`） |
 | `PTT_MCP_ENDPOINT` | — | MCP 接入点：`wss://…?token=…\|设备ID; …` |
 | `PTT_TLS_CERT` / `PTT_TLS_KEY` | — | 启用 HTTPS |
 | `PTT_DEMO` | — | `1` 时预置演示群并运行内置回声测试机器人 |
@@ -78,6 +78,10 @@ open http://localhost:8080/admin    # 车队管理
 - [固件接入指南](docs/firmware.md) — ESP32 双通道 / 音频仲裁 / 联调工具 / 性能实测
 - [MCP Server](docs/mcp.md) — 工具列表、设备身份、灵矽接入、内置助手
 - [REST API](docs/api.md) — 群组、设备、存档回放、AI、模板
+
+## 安全说明
+
+黑客松版本的边界：设备通过 `device_id` 自报身份（未做设备证书 / 签名），REST 的普通设备操作不鉴权；MCP 传输层绑定的设备身份不能被工具参数覆盖；管理操作在配置 `PTT_AUTH_TOKEN` 后需要令牌。量产前需补设备鉴权（如出厂密钥 + 签名 Token）。
 
 ## 开发
 

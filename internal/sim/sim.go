@@ -98,6 +98,11 @@ func (d *device) read(ctx context.Context, onText func(msg), onAudio func([]byte
 
 // transmit takes the floor and sends packets at real-time pace.
 func (d *device) transmit(ctx context.Context, granted <-chan bool, pkts [][]byte) error {
+	// Drop any stale reply so we wait for the answer to this request.
+	select {
+	case <-granted:
+	default:
+	}
 	if err := d.send(ctx, msg{"type": "ptt_start"}); err != nil {
 		return err
 	}
@@ -150,7 +155,10 @@ func RunEcho(ctx context.Context, server, id, name, code string) error {
 	return d.read(ctx, func(m msg) {
 		switch m["type"] {
 		case "floor":
-			granted <- m["granted"] == true
+			select {
+			case granted <- m["granted"] == true:
+			default:
+			}
 		case "talk_start":
 			if m["replay"] == true {
 				return
@@ -208,7 +216,10 @@ func RunPlay(ctx context.Context, server, id, name, code, file string, every tim
 	granted := make(chan bool, 1)
 	go d.read(ctx, func(m msg) {
 		if m["type"] == "floor" {
-			granted <- m["granted"] == true
+			select {
+			case granted <- m["granted"] == true:
+			default:
+			}
 		}
 	}, nil)
 	log.Printf("%s will transmit %d frames every %s", id, len(pkts), every)
@@ -285,7 +296,10 @@ func RunLoad(ctx context.Context, server, prefix, code string, n int, dur time.D
 	granted := make(chan bool, 1)
 	go talker.read(ctx, func(m msg) {
 		if m["type"] == "floor" {
-			granted <- m["granted"] == true
+			select {
+			case granted <- m["granted"] == true:
+			default:
+			}
 		}
 	}, nil)
 	time.Sleep(500 * time.Millisecond)

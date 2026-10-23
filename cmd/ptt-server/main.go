@@ -46,7 +46,7 @@ func main() {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})
-	apiSrv := &api.Server{Store: st, BaseURL: cfg.BaseURL, NearbyRadiusKm: cfg.NearbyRadiusKm}
+	apiSrv := &api.Server{Store: st, BaseURL: cfg.BaseURL, NearbyRadiusKm: cfg.NearbyRadiusKm, AdminToken: cfg.AuthToken}
 	hub := voice.NewHub(st, apiSrv, cfg.MaxTalk)
 	apiSrv.Presence = hub
 	apiSrv.Register(mux)

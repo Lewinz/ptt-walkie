@@ -3,6 +3,7 @@
 package api
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -32,6 +33,21 @@ type Server struct {
 	Presence       Presence
 	BaseURL        string
 	NearbyRadiusKm float64
+	// AdminToken, when set, is required for admin actions that carry no
+	// device identity (dissolve, role changes, batch import).
+	AdminToken string
+}
+
+// adminOK reports whether an identity-less request may act as the console.
+func (s *Server) adminOK(r *http.Request) bool {
+	if s.AdminToken == "" {
+		return true
+	}
+	tok := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if tok == "" {
+		tok = r.URL.Query().Get("token")
+	}
+	return subtle.ConstantTimeCompare([]byte(tok), []byte(s.AdminToken)) == 1
 }
 
 // MemberStatus is a group member annotated with live presence.
@@ -178,7 +194,8 @@ func (s *Server) dissolveGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Only a leader may dissolve; an empty actor means the admin console.
-	if actor := deviceID(r, ""); actor != "" && !g.IsLeader(actor) {
+	actor := deviceID(r, "")
+	if (actor != "" && !g.IsLeader(actor)) || (actor == "" && !s.adminOK(r)) {
 		writeErr(w, store.ErrForbidden)
 		return
 	}
@@ -314,7 +331,12 @@ func (s *Server) setRole(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, store.ErrInvalidInput)
 		return
 	}
-	if err := s.Store.SetRole(deviceID(r, req.ActorID), r.PathValue("id"), r.PathValue("device"), req.Role); err != nil {
+	actor := deviceID(r, req.ActorID)
+	if actor == "" && !s.adminOK(r) {
+		writeErr(w, store.ErrForbidden)
+		return
+	}
+	if err := s.Store.SetRole(actor, r.PathValue("id"), r.PathValue("device"), req.Role); err != nil {
 		writeErr(w, err)
 		return
 	}
@@ -331,6 +353,10 @@ type batchReq struct {
 
 // batchJoin provisions many devices into a group at once (B2B import).
 func (s *Server) batchJoin(w http.ResponseWriter, r *http.Request) {
+	if !s.adminOK(r) {
+		writeErr(w, store.ErrForbidden)
+		return
+	}
 	var req batchReq
 	if !readJSON(w, r, &req) {
 		return

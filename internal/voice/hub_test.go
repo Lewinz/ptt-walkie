@@ -334,3 +334,17 @@ func TestGuideTemplateListenOnlyAndGreeting(t *testing.T) {
 	}
 	_ = other
 }
+
+func TestBadLocationRejected(t *testing.T) {
+	e := newEnv(t)
+	c := e.dial(t, "gpsless")
+	c.send(map[string]any{"type": "location"})
+	if m := c.expect("error"); m["code"] != "bad_location" {
+		t.Fatalf("%v", m)
+	}
+	c.send(map[string]any{"type": "location", "lat": 31.2, "lng": 121.5})
+	time.Sleep(50 * time.Millisecond)
+	if d, _ := e.st.Device("gpsless"); d.Location == nil || d.Location.Lat != 31.2 {
+		t.Fatalf("valid location not stored: %+v", d.Location)
+	}
+}

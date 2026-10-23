@@ -118,17 +118,27 @@ func (s *Store) Flush() error {
 	data, err := json.MarshalIndent(snapshot{Groups: s.groups, Devices: s.devices}, "", "  ")
 	s.dirty = false
 	s.mu.Unlock()
+	if err == nil {
+		err = writeAtomic(s.path, data)
+	}
 	if err != nil {
+		// Keep the state dirty so the next tick retries.
+		s.mu.Lock()
+		s.dirty = true
+		s.mu.Unlock()
+	}
+	return err
+}
+
+func writeAtomic(path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
-		return err
-	}
-	tmp := s.path + ".tmp"
+	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
 		return err
 	}
-	return os.Rename(tmp, s.path)
+	return os.Rename(tmp, path)
 }
 
 // ---- devices ----
@@ -564,23 +574,19 @@ func IdleTimeout(g GroupView, def time.Duration) time.Duration {
 	return def
 }
 
-// DissolveIdleTemp removes temporary groups silent for longer than their
-// idle timeout (template-specific, else def). It returns the dissolved names.
-func (s *Store) DissolveIdleTemp(def time.Duration) []string {
+// DissolveIfIdle dissolves a temporary group only if it has not been active
+// since lastActive (as observed by the caller), avoiding check-then-act races.
+func (s *Store) DissolveIfIdle(groupID string, lastActive time.Time) bool {
 	s.mu.Lock()
-	now := s.now()
-	var names []string
-	var evs []Event
-	for id, g := range s.groups {
-		if g.Type == GroupTemp && now.Sub(g.LastActiveAt) > IdleTimeout(g.view(), def) {
-			names = append(names, g.Name)
-			e, _ := s.dissolve(id)
-			evs = append(evs, e...)
-		}
+	g, ok := s.groups[groupID]
+	if !ok || g.Type != GroupTemp || !g.LastActiveAt.Equal(lastActive) {
+		s.mu.Unlock()
+		return false
 	}
+	evs, _ := s.dissolve(groupID)
 	s.mu.Unlock()
 	s.emit(evs...)
-	return names
+	return true
 }
 
 // Touch marks the group as active (someone spoke).
