@@ -18,6 +18,7 @@ import (
 	"github.com/plant-squad/ptt-walkie/internal/archive"
 	"github.com/plant-squad/ptt-walkie/internal/assistant"
 	"github.com/plant-squad/ptt-walkie/internal/config"
+	"github.com/plant-squad/ptt-walkie/internal/kodo"
 	"github.com/plant-squad/ptt-walkie/internal/lifecycle"
 	"github.com/plant-squad/ptt-walkie/internal/mcp"
 	"github.com/plant-squad/ptt-walkie/internal/store"
@@ -67,6 +68,15 @@ func main() {
 		slog.Info("ai enabled", "base", cfg.AIBaseURL, "model", cfg.AIModel, "asr", cfg.ASRMode)
 	} else {
 		slog.Info("ai disabled (set PTT_AI_KEY); accepting client-side transcripts")
+	}
+	if cfg.KodoEnabled() {
+		up := &kodo.Uploader{Archive: arc, Prefix: cfg.KodoPrefix, Client: &kodo.Client{
+			Endpoint: cfg.KodoEndpoint, Region: cfg.KodoRegionOrDefault(), Bucket: cfg.KodoBucket,
+			AccessKey: cfg.KodoAK, SecretKey: cfg.KodoSK}}
+		up.Attach()
+		aiSvc.AudioURL = up.URL
+		arcHandler.RemoteURL = up.URL
+		slog.Info("kodo mirror enabled", "endpoint", cfg.KodoEndpoint, "bucket", cfg.KodoBucket)
 	}
 	aiSvc.Attach()
 	aiSvc.Register(mux)

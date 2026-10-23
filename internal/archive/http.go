@@ -1,9 +1,11 @@
 package archive
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -16,6 +18,8 @@ type Handler struct {
 	Archive *Archive
 	Store   *store.Store
 	Hub     *voice.Hub
+	// RemoteURL, if set, serves recordings no longer on local disk.
+	RemoteURL func(ctx context.Context, r Record) (string, error)
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -53,6 +57,12 @@ func (h *Handler) audio(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		http.NotFound(w, r)
 		return
+	}
+	if _, err := os.Stat(h.Archive.Path(rec)); err != nil && h.RemoteURL != nil && rec.Remote != "" {
+		if link, err := h.RemoteURL(r.Context(), rec); err == nil {
+			http.Redirect(w, r, link, http.StatusFound)
+			return
+		}
 	}
 	w.Header().Set("Content-Type", "audio/ogg")
 	http.ServeFile(w, r, h.Archive.Path(rec))

@@ -22,7 +22,8 @@ import (
 type Record struct {
 	voice.Utterance
 	DurationMs int64  `json:"duration_ms"`
-	File       string `json:"file"` // relative to the archive dir
+	File       string `json:"file"`             // relative to the archive dir
+	Remote     string `json:"remote,omitempty"` // object key in Kodo, once mirrored
 	Transcript string `json:"transcript,omitempty"`
 	// Alert lists safety keywords found in the transcript ("事故", "封路" …).
 	Alert []string `json:"alert,omitempty"`

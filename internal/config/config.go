@@ -4,6 +4,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -36,6 +37,34 @@ type Config struct {
 	// localhost), so set these when serving the simulator on a LAN / domain.
 	TLSCert string
 	TLSKey  string
+
+	// Optional Qiniu Kodo mirror for recordings (S3-compatible API).
+	KodoEndpoint string // https://s3.cn-east-1.qiniucs.com
+	KodoRegion   string // derived from the endpoint when empty
+	KodoBucket   string
+	KodoAK       string
+	KodoSK       string
+	KodoPrefix   string
+}
+
+// KodoEnabled reports whether recordings should be mirrored to Kodo.
+func (c Config) KodoEnabled() bool {
+	return c.KodoBucket != "" && c.KodoAK != "" && c.KodoSK != ""
+}
+
+// KodoRegionOrDefault derives the region from s3.{region}.qiniucs.com.
+func (c Config) KodoRegionOrDefault() string {
+	if c.KodoRegion != "" {
+		return c.KodoRegion
+	}
+	host := c.KodoEndpoint
+	if i := strings.Index(host, "://"); i >= 0 {
+		host = host[i+3:]
+	}
+	if parts := strings.Split(host, "."); len(parts) > 2 && parts[0] == "s3" {
+		return parts[1]
+	}
+	return "cn-east-1"
 }
 
 func Load() Config {
@@ -56,6 +85,12 @@ func Load() Config {
 		AuthToken:      env("PTT_AUTH_TOKEN", ""),
 		TLSCert:        env("PTT_TLS_CERT", ""),
 		TLSKey:         env("PTT_TLS_KEY", ""),
+		KodoEndpoint:   env("PTT_KODO_ENDPOINT", "https://s3.cn-east-1.qiniucs.com"),
+		KodoRegion:     env("PTT_KODO_REGION", ""),
+		KodoBucket:     env("PTT_KODO_BUCKET", ""),
+		KodoAK:         env("PTT_KODO_AK", ""),
+		KodoSK:         env("PTT_KODO_SK", ""),
+		KodoPrefix:     env("PTT_KODO_PREFIX", "ptt-walkie/"),
 	}
 }
 
