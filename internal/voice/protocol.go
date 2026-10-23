@@ -56,6 +56,7 @@ var DefaultAudio = AudioParams{Format: "opus", SampleRate: 16000, Channels: 1, F
 type Priority int
 
 const (
+	PriorityReplay    Priority = 0 // archived playback; any live talk interrupts it
 	PriorityNormal    Priority = 1
 	PriorityLeader    Priority = 2
 	PriorityEmergency Priority = 3
