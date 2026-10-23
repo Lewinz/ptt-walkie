@@ -134,3 +134,30 @@ func TestBatchJoin(t *testing.T) {
 		t.Fatalf("name %q", d.Name)
 	}
 }
+
+func TestAdminTokenRequiredForAnonymousAdminActions(t *testing.T) {
+	st, _ := store.New("")
+	mux := http.NewServeMux()
+	(&Server{Store: st, AdminToken: "s3cret"}).Register(mux)
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+	g, _ := st.CreateGroup("lead", store.CreateGroupInput{Name: "车队"})
+	st.JoinGroup("me", g.ID)
+
+	if code := do(t, ts, "PUT", "/api/groups/"+g.ID+"/members/me/role", map[string]any{"role": "leader"}, nil); code != 403 {
+		t.Fatalf("anonymous promote: %d", code)
+	}
+	if code := do(t, ts, "DELETE", "/api/groups/"+g.ID, nil, nil); code != 403 {
+		t.Fatalf("anonymous dissolve: %d", code)
+	}
+	if code := do(t, ts, "POST", "/api/groups/"+g.ID+"/members/batch", map[string]any{"devices": []any{}}, nil); code != 403 {
+		t.Fatalf("anonymous batch: %d", code)
+	}
+	// leaders act with their identity; the console with the token
+	if code := do(t, ts, "PUT", "/api/groups/"+g.ID+"/members/me/role", map[string]any{"role": "leader", "actor_id": "lead"}, nil); code != 204 {
+		t.Fatalf("leader promote: %d", code)
+	}
+	if code := do(t, ts, "DELETE", "/api/groups/"+g.ID+"?token=s3cret", nil, nil); code != 204 {
+		t.Fatalf("token dissolve: %d", code)
+	}
+}

@@ -2,10 +2,15 @@
 
 const $ = (sel, root = document) => root.querySelector(sel);
 
+// Admin token (PTT_AUTH_TOKEN): open /admin?token=… once; it is remembered.
+const urlToken = new URLSearchParams(location.search).get('token');
+if (urlToken) localStorage.setItem('ptt.admin.token', urlToken);
+const adminToken = localStorage.getItem('ptt.admin.token') || '';
+
 async function api(method, path, body) {
   const res = await fetch(path, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(adminToken ? { Authorization: 'Bearer ' + adminToken } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();

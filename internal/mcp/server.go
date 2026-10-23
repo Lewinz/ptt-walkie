@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strconv"
 )
 
 // Supported protocol revisions, newest first.
@@ -172,12 +173,15 @@ func (s *Server) dispatch(ctx context.Context, caller Caller, req rpcRequest) (a
 		if args == nil {
 			args = Args{}
 		}
-		// Explicit device_id (argument or _meta) overrides transport identity:
-		// handy for testing with MCP Inspector and for platforms that pass it.
-		if id := args.String("device_id"); id != "" {
-			caller.DeviceID = id
-		} else if id, _ := p.Meta["device_id"].(string); id != "" {
-			caller.DeviceID = id
+		// An explicit device_id (argument or _meta) only fills in a missing
+		// identity; it never overrides the one bound by the transport, so a
+		// caller (or a prompt-injected LLM) cannot act as another device.
+		if caller.DeviceID == "" {
+			if id := args.String("device_id"); id != "" {
+				caller.DeviceID = id
+			} else if id, _ := p.Meta["device_id"].(string); id != "" {
+				caller.DeviceID = id
+			}
 		}
 		res := s.tools[i].handler(ctx, caller, args)
 		slog.Info("mcp tool", "tool", p.Name, "device", caller.DeviceID, "error", res.IsError, "text", res.Text)
@@ -204,7 +208,7 @@ func (a Args) String(k string) string {
 	case string:
 		return v
 	case float64:
-		return fmt.Sprintf("%g", v)
+		return strconv.FormatFloat(v, 'f', -1, 64)
 	}
 	return ""
 }

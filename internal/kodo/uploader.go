@@ -36,7 +36,13 @@ func (u *Uploader) Attach() {
 func (u *Uploader) Ensure(ctx context.Context, id string) (string, error) {
 	mu, _ := u.locks.LoadOrStore(id, &sync.Mutex{})
 	mu.(*sync.Mutex).Lock()
-	defer mu.(*sync.Mutex).Unlock()
+	defer func() {
+		mu.(*sync.Mutex).Unlock()
+		// Once uploaded, Remote short-circuits; the lock is no longer needed.
+		if r, ok := u.Archive.Get(id); !ok || r.Remote != "" {
+			u.locks.Delete(id)
+		}
+	}()
 
 	rec, ok := u.Archive.Get(id)
 	if !ok {

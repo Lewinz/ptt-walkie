@@ -241,3 +241,20 @@ func TestArgsLenient(t *testing.T) {
 		t.Fatal("lenient args")
 	}
 }
+
+func TestBoundIdentityCannotBeOverridden(t *testing.T) {
+	f := newFixture(t, "")
+	f.call(t, "victim", "create_group", map[string]any{"name": "受害者车队"})
+	// attacker bound to /mcp/d/attacker tries to act as victim
+	text, isErr := f.call(t, "attacker", "dissolve_group", map[string]any{"device_id": "victim", "query": "受害者车队"})
+	if !isErr || len(f.st.AllGroups()) != 1 {
+		t.Fatalf("impersonation succeeded: %s", text)
+	}
+	// unbound transport may still name a device (MCP Inspector testing)
+	if text, isErr := f.call(t, "", "list_my_groups", map[string]any{"device_id": "victim"}); isErr || !strings.Contains(text, "受害者车队") {
+		t.Fatalf("unbound device_id: %s", text)
+	}
+	if got := (Args{"id": 860123456789012.0}).String("id"); got != "860123456789012" {
+		t.Fatalf("large number formatted as %q", got)
+	}
+}

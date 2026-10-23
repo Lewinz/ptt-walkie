@@ -61,7 +61,7 @@ func (j *Janitor) Sweep(now time.Time) []string {
 		deadline := g.LastActiveAt.Add(store.IdleTimeout(g, j.DefaultIdle))
 		switch {
 		case now.After(deadline):
-			if err := j.Store.DissolveGroup(g.ID); err == nil {
+			if j.Store.DissolveIfIdle(g.ID, g.LastActiveAt) {
 				slog.Info("temp group dissolved", "group", g.Name, "idle_since", g.LastActiveAt)
 				dissolved = append(dissolved, g.Name)
 			}
