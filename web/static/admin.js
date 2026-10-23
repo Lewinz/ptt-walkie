@@ -82,6 +82,8 @@ function groupCard(g, open) {
       el('div', { class: 'gc-title' },
         el('h3', {}, g.name),
         el('span', { class: 'tag' }, TYPE[g.type]),
+        tplName(g.template) ? el('span', { class: 'tag' }, tplName(g.template) + '模板') : null,
+        g.talk_policy === 'leaders' ? el('span', { class: 'tag warn' }, '仅队长可讲') : null,
         el('span', { class: 'tag' }, VIS[g.visibility]),
         g.route ? el('span', { class: 'tag' }, g.route) : null,
       ),
@@ -104,6 +106,11 @@ function groupCard(g, open) {
       el('img', { src: `/api/groups/${g.id}/qr.png`, alt: '入群二维码', loading: 'lazy' })),
   );
   return card;
+}
+
+function tplName(id) {
+  const t = templates.find((x) => x.id === id);
+  return t ? t.name : '';
 }
 
 function memberRow(g, m) {
@@ -180,7 +187,7 @@ createForm.visibility.onchange = () => {
 createForm.onsubmit = (e) => {
   e.preventDefault();
   const f = createForm;
-  const body = { name: f.name.value, type: f.type.value, visibility: f.visibility.value, route: f.route.value, owner_id: f.owner_id.value.trim() };
+  const body = { name: f.name.value, template: f.template.value, type: f.type.value, visibility: f.visibility.value, route: f.route.value, owner_id: f.owner_id.value.trim() };
   if (body.visibility === 'nearby') {
     body.lat = parseFloat(f.lat.value);
     body.lng = parseFloat(f.lng.value);
@@ -208,6 +215,16 @@ $('#batch').onsubmit = (e) => {
     f.devices.value = '';
   });
 };
+
+let templates = [];
+fetch('/api/templates').then((r) => r.json()).then((list) => {
+  templates = list;
+  for (const t of list) createForm.template.append(el('option', { value: t.id }, `${t.name} — ${t.description}`));
+  createForm.template.onchange = () => {
+    const t = list.find((x) => x.id === createForm.template.value);
+    if (t) createForm.type.value = t.type;
+  };
+});
 
 refresh();
 setInterval(refresh, 2000);

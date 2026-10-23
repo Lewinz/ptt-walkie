@@ -196,6 +196,8 @@ type CreateGroupInput struct {
 	Visibility Visibility
 	Route      string
 	Location   *GeoPoint
+	Template   string     // scenario template id; fills Type / TalkPolicy defaults
+	TalkPolicy TalkPolicy // overrides the template
 }
 
 // CreateGroup creates a group owned by ownerID, who joins it as leader and
@@ -205,8 +207,26 @@ func (s *Store) CreateGroup(ownerID string, in CreateGroupInput) (GroupView, err
 	if in.Name == "" {
 		return GroupView{}, fmt.Errorf("%w: group name required", ErrInvalidInput)
 	}
+	if in.Template != "" {
+		t, ok := TemplateByID(in.Template)
+		if !ok {
+			return GroupView{}, fmt.Errorf("%w: unknown template %q", ErrInvalidInput, in.Template)
+		}
+		if in.Type == "" {
+			in.Type = t.Type
+		}
+		if in.TalkPolicy == "" {
+			in.TalkPolicy = t.TalkPolicy
+		}
+	}
 	if in.Type == "" {
 		in.Type = GroupFixed
+	}
+	if in.TalkPolicy == "" {
+		in.TalkPolicy = TalkAll
+	}
+	if in.TalkPolicy != TalkAll && in.TalkPolicy != TalkLeaders {
+		return GroupView{}, fmt.Errorf("%w: unknown talk policy %q", ErrInvalidInput, in.TalkPolicy)
 	}
 	if in.Visibility == "" {
 		in.Visibility = VisCode
@@ -235,6 +255,8 @@ func (s *Store) CreateGroup(ownerID string, in CreateGroupInput) (GroupView, err
 		Type:         in.Type,
 		Visibility:   in.Visibility,
 		OwnerID:      ownerID,
+		Template:     in.Template,
+		TalkPolicy:   in.TalkPolicy,
 		Route:        strings.TrimSpace(in.Route),
 		Location:     in.Location,
 		Members:      map[string]*Member{},
@@ -503,15 +525,24 @@ func (s *Store) dissolve(groupID string) ([]Event, bool) {
 	return append([]Event{{Type: EvDissolved, GroupID: groupID, Name: g.Name, Members: members}}, evs...), true
 }
 
-// DissolveIdleTemp removes temporary groups with no activity for idle.
-// It returns the names of dissolved groups.
-func (s *Store) DissolveIdleTemp(idle time.Duration) []string {
+// IdleTimeout is how long a temporary group may stay silent before it is
+// dissolved: the template's timeout, or def.
+func IdleTimeout(g GroupView, def time.Duration) time.Duration {
+	if t, ok := TemplateByID(g.Template); ok && t.IdleTimeout > 0 {
+		return t.IdleTimeout
+	}
+	return def
+}
+
+// DissolveIdleTemp removes temporary groups silent for longer than their
+// idle timeout (template-specific, else def). It returns the dissolved names.
+func (s *Store) DissolveIdleTemp(def time.Duration) []string {
 	s.mu.Lock()
-	cutoff := s.now().Add(-idle)
+	now := s.now()
 	var names []string
 	var evs []Event
 	for id, g := range s.groups {
-		if g.Type == GroupTemp && g.LastActiveAt.Before(cutoff) {
+		if g.Type == GroupTemp && now.Sub(g.LastActiveAt) > IdleTimeout(g.view(), def) {
 			names = append(names, g.Name)
 			e, _ := s.dissolve(id)
 			evs = append(evs, e...)
@@ -712,7 +743,8 @@ func (s *Store) Resolve(deviceID, query string) Resolution {
 func (g *Group) view() GroupView {
 	v := GroupView{
 		ID: g.ID, Code: g.Code, Name: g.Name, Type: g.Type, Visibility: g.Visibility,
-		OwnerID: g.OwnerID, Route: g.Route, CreatedAt: g.CreatedAt, LastActiveAt: g.LastActiveAt,
+		OwnerID: g.OwnerID, Template: g.Template, TalkPolicy: g.TalkPolicy,
+		Route: g.Route, CreatedAt: g.CreatedAt, LastActiveAt: g.LastActiveAt,
 	}
 	if g.Location != nil {
 		loc := *g.Location
