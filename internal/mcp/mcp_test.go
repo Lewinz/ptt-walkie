@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/plant-squad/ptt-walkie/internal/ai"
 	"github.com/plant-squad/ptt-walkie/internal/api"
 	"github.com/plant-squad/ptt-walkie/internal/archive"
 	"github.com/plant-squad/ptt-walkie/internal/store"
@@ -28,8 +29,10 @@ func newFixture(t *testing.T, token string) *fixture {
 	hub := voice.NewHub(st, apiSrv, time.Minute)
 	apiSrv.Presence = hub
 	arc, _ := archive.Open(t.TempDir())
-	srv := NewServer(Deps{Store: st, API: apiSrv, Hub: hub,
-		Archive: &archive.Handler{Archive: arc, Store: st, Hub: hub}, NearbyRadiusKm: 3})
+	h := &archive.Handler{Archive: arc, Store: st, Hub: hub}
+	aiSvc := &ai.Service{Archive: arc, Replay: h, Store: st, Hub: hub}
+	aiSvc.Attach()
+	srv := NewServer(Deps{Store: st, API: apiSrv, Hub: hub, Archive: h, AI: aiSvc, NearbyRadiusKm: 3})
 	mux := http.NewServeMux()
 	(&HTTPHandler{Server: srv, Token: token}).Register(mux)
 	ts := httptest.NewServer(mux)
@@ -191,6 +194,10 @@ func TestVoiceCommandFlow(t *testing.T) {
 	text, _ = f.call(t, "wang", "who_spoke_last", nil)
 	if !strings.Contains(text, "最近没人说话") {
 		t.Fatalf("who: %s", text)
+	}
+	text, _ = f.call(t, "wang", "summarize_missed", map[string]any{"minutes": 60})
+	if text != "过去1小时河南老乡群没有新消息。" {
+		t.Fatalf("summary: %s", text)
 	}
 	text, _ = f.call(t, "wang", "leave_group", nil)
 	if text != "已退出河南老乡群。现在在京沪线车队。" {

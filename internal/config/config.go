@@ -23,6 +23,7 @@ type Config struct {
 	AIBaseURL  string
 	AIKey      string
 	AIModel    string
+	ASRMode    string // "qiniu" (POST /voice/asr with audio URL) or "openai" (/audio/transcriptions upload)
 	ASRModel   string
 	AlertWords []string
 
@@ -41,9 +42,10 @@ func Load() Config {
 		TempGroupIdle:  envDuration("PTT_TEMP_GROUP_IDLE", 2*time.Hour),
 		NearbyRadiusKm: envFloat("PTT_NEARBY_RADIUS_KM", 3),
 		MaxTalk:        envDuration("PTT_MAX_TALK", 60*time.Second),
-		AIBaseURL:      env("PTT_AI_BASE_URL", "https://openai.qiniu.com/v1"),
+		AIBaseURL:      env("PTT_AI_BASE_URL", "https://api.qnaigc.com/v1"),
 		AIKey:          env("PTT_AI_KEY", ""),
 		AIModel:        env("PTT_AI_MODEL", "deepseek-v3"),
+		ASRMode:        env("PTT_ASR_MODE", "qiniu"),
 		ASRModel:       env("PTT_ASR_MODEL", "asr"),
 		AlertWords:     splitList(env("PTT_ALERT_WORDS", "事故,查车,封路,追尾,堵车,危险,救命,着火")),
 		MCPEndpoint:    env("PTT_MCP_ENDPOINT", ""),

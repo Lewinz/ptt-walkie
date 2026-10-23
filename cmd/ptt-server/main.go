@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/plant-squad/ptt-walkie/internal/ai"
 	"github.com/plant-squad/ptt-walkie/internal/api"
 	"github.com/plant-squad/ptt-walkie/internal/archive"
 	"github.com/plant-squad/ptt-walkie/internal/config"
@@ -56,7 +57,19 @@ func main() {
 	arcHandler := &archive.Handler{Archive: arc, Store: st, Hub: hub}
 	arcHandler.Register(mux)
 
-	mcpSrv := mcp.NewServer(mcp.Deps{Store: st, API: apiSrv, Hub: hub, Archive: arcHandler, NearbyRadiusKm: cfg.NearbyRadiusKm})
+	aiSvc := &ai.Service{Archive: arc, Replay: arcHandler, Store: st, Hub: hub,
+		PublicURL: cfg.BaseURL, AlertWords: cfg.AlertWords}
+	if cfg.AIKey != "" {
+		aiSvc.Client = &ai.Client{BaseURL: cfg.AIBaseURL, Key: cfg.AIKey, Model: cfg.AIModel,
+			ASRMode: cfg.ASRMode, ASRModel: cfg.ASRModel}
+		slog.Info("ai enabled", "base", cfg.AIBaseURL, "model", cfg.AIModel, "asr", cfg.ASRMode)
+	} else {
+		slog.Info("ai disabled (set PTT_AI_KEY); accepting client-side transcripts")
+	}
+	aiSvc.Attach()
+	aiSvc.Register(mux)
+
+	mcpSrv := mcp.NewServer(mcp.Deps{Store: st, API: apiSrv, Hub: hub, Archive: arcHandler, AI: aiSvc, NearbyRadiusKm: cfg.NearbyRadiusKm})
 	(&mcp.HTTPHandler{Server: mcpSrv, Token: cfg.AuthToken}).Register(mux)
 	web.Register(mux)
 	for _, ep := range mcp.ParseEndpoints(cfg.MCPEndpoint) {

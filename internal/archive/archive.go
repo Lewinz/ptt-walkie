@@ -176,6 +176,11 @@ func (a *Archive) persist(r Record) {
 		slog.Error("archive write", "err", err)
 		return
 	}
+	// A transcript may have been attached while we were encoding: index the
+	// current version so the reloaded state is complete.
+	if cur, ok := a.Get(r.ID); ok {
+		r = cur
+	}
 	a.appendIndex(r)
 	a.subMu.RLock()
 	subs := slices.Clone(a.subs)

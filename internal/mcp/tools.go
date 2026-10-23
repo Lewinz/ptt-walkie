@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/plant-squad/ptt-walkie/internal/ai"
 	"github.com/plant-squad/ptt-walkie/internal/api"
 	"github.com/plant-squad/ptt-walkie/internal/archive"
 	"github.com/plant-squad/ptt-walkie/internal/store"
@@ -19,6 +20,7 @@ type Deps struct {
 	API            *api.Server
 	Hub            *voice.Hub
 	Archive        *archive.Handler
+	AI             *ai.Service // optional; enables summarize_missed
 	NearbyRadiusKm float64
 }
 
@@ -97,6 +99,13 @@ func NewServer(d Deps) *Server {
 				"query": str("群，留空为当前群"),
 			}),
 			handler: t.whoSpoke},
+		{Name: "summarize_missed", Title: "我错过了什么",
+			Description: "总结群里最近错过的语音内容（谁说了什么、路况、集合信息等）。用户说「我错过了什么」「刚才群里说了啥」「最近半小时有什么消息」时调用。",
+			InputSchema: schema(props{
+				"minutes": num("总结最近多少分钟，默认 30"),
+				"query":   str("群，留空为当前群"),
+			}),
+			handler: t.summarize},
 		{Name: "send_text_message", Title: "群里留言",
 			Description: "把一句文字留言播报给群里所有在线成员（适合不方便按键说话时）。用户说「给车队群发：前面堵车」「告诉大家我晚点到」时调用。",
 			InputSchema: schema(props{
@@ -600,4 +609,23 @@ func (t *tools) dissolveGroup(_ context.Context, c Caller, a Args) Result {
 		return errResult("解散失败：%v", err)
 	}
 	return Result{Text: fmt.Sprintf("%s已解散。", g.Name)}
+}
+
+func (t *tools) summarize(ctx context.Context, c Caller, a Args) Result {
+	if c.DeviceID == "" {
+		return errNoDevice
+	}
+	if t.AI == nil {
+		return errResult("摘要功能未启用。")
+	}
+	g, fail := t.target(c.DeviceID, a.String("query"))
+	if fail != nil {
+		return *fail
+	}
+	minutes := min(max(a.Int("minutes", 30), 1), 24*60)
+	sum, err := t.AI.Summarize(ctx, c.DeviceID, g.ID, time.Now().Add(-time.Duration(minutes)*time.Minute))
+	if err != nil {
+		return errResult("摘要失败：%v", err)
+	}
+	return Result{Text: sum.Text, Data: sum}
 }

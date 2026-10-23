@@ -28,10 +28,15 @@ type Hub struct {
 	MaxTalk     time.Duration // hard cap per utterance
 	IdleRelease time.Duration // release floor when no audio arrives for this long
 
-	mu     sync.Mutex
-	conns  map[string]*Conn
-	floors map[string]*Utterance // group id → active utterance
-	now    func() time.Time
+	mu      sync.Mutex
+	conns   map[string]*Conn
+	floors  map[string]*Utterance // group id → active utterance
+	offline map[string]time.Time  // device id → when it last disconnected
+	now     func() time.Time
+
+	// Hooks, set before serving.
+	OnTranscript func(deviceID, utteranceID, text string)
+	OnReconnect  func(deviceID string, offlineAt time.Time)
 }
 
 func NewHub(st *store.Store, apiSrv *api.Server, maxTalk time.Duration) *Hub {
@@ -42,6 +47,7 @@ func NewHub(st *store.Store, apiSrv *api.Server, maxTalk time.Duration) *Hub {
 		IdleRelease: 4 * time.Second,
 		conns:       map[string]*Conn{},
 		floors:      map[string]*Utterance{},
+		offline:     map[string]time.Time{},
 		now:         time.Now,
 	}
 	st.Subscribe(h.onEvent)
@@ -85,6 +91,8 @@ func (h *Hub) register(c *Conn) {
 	h.mu.Lock()
 	old := h.conns[c.id]
 	h.conns[c.id] = c
+	offlineAt, wasOffline := h.offline[c.id]
+	delete(h.offline, c.id)
 	h.mu.Unlock()
 	if old != nil {
 		old.sendJSON(noticeMsg{Type: MsgNotice, Level: "info", Text: "设备已在其他地方登录"})
@@ -94,6 +102,9 @@ func (h *Hub) register(c *Conn) {
 	slog.Info("device online", "device", c.id)
 	h.sendWelcome(c)
 	h.broadcastPresence(c.currentGroup())
+	if wasOffline && h.OnReconnect != nil {
+		go h.OnReconnect(c.id, offlineAt)
+	}
 }
 
 func (h *Hub) unregister(c *Conn) {
@@ -101,6 +112,7 @@ func (h *Hub) unregister(c *Conn) {
 	current := h.conns[c.id] == c
 	if current {
 		delete(h.conns, c.id)
+		h.offline[c.id] = h.now()
 	}
 	h.mu.Unlock()
 	if !current {
@@ -162,7 +174,7 @@ func (h *Hub) requestFloor(c *Conn) {
 	if cur := h.floors[g.ID]; cur != nil {
 		if cur.SpeakerID == c.id {
 			h.mu.Unlock()
-			c.sendJSON(floorMsg{Type: MsgFloor, Granted: true, GroupID: g.ID, MaxMs: h.MaxTalk.Milliseconds()})
+			c.sendJSON(floorMsg{Type: MsgFloor, Granted: true, GroupID: g.ID, UtteranceID: cur.ID, MaxMs: h.MaxTalk.Milliseconds()})
 			return
 		}
 		if prio <= cur.Priority {
@@ -189,7 +201,7 @@ func (h *Hub) requestFloor(c *Conn) {
 		r.Start(*u)
 	}
 	h.mu.Unlock()
-	c.sendJSON(floorMsg{Type: MsgFloor, Granted: true, GroupID: g.ID, MaxMs: h.MaxTalk.Milliseconds()})
+	c.sendJSON(floorMsg{Type: MsgFloor, Granted: true, GroupID: g.ID, UtteranceID: u.ID, MaxMs: h.MaxTalk.Milliseconds()})
 	h.st.Touch(g.ID)
 }
 
@@ -419,6 +431,22 @@ func (h *Hub) Notify(deviceID, level, text string) bool {
 	}
 	c.sendJSON(noticeMsg{Type: MsgNotice, Level: level, Text: text})
 	return true
+}
+
+// SendGroup sends an arbitrary JSON message to every device tuned to the
+// group (and not muting it).
+func (h *Hub) SendGroup(groupID string, msg any) {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, c := range h.conns {
+		if c.dev.CurrentGroup == groupID && !c.dev.IsMuted(groupID, h.now()) {
+			c.sendRaw(data)
+		}
+	}
 }
 
 // NotifyGroup sends a notice to every device tuned to the group.

@@ -33,6 +33,7 @@ ws(s)://<host>/ws?device_id=<设备唯一 ID>&name=<显示名，可选>
 | `ptt_stop` | | 松开 PTT，释放话权 |
 | `switch` | `group_id` / `query` / `delta` | 切群：精确 ID、名称或房间号（模糊）、`delta: 1/-1` 对应旋钮下一个 / 上一个 |
 | `location` | `lat`, `lng` | 上报 GPS，用于附近群 |
+| `transcript` | `utterance_id`, `text` | 可选：发言者自带的转写（浏览器 Web Speech API）；仅在服务端未配置 ASR 时采纳，且只接受发言者本人提交 |
 | `ping` | | 应用层心跳，回 `pong` |
 | *二进制* | Opus 包 | 仅在持有话权时转发，否则丢弃 |
 
@@ -42,11 +43,12 @@ ws(s)://<host>/ws?device_id=<设备唯一 ID>&name=<显示名，可选>
 |---|---|---|
 | `welcome` | `device`, `audio`, `max_talk`, `announce` | 连接建立后的设备完整状态与编码参数 |
 | `channel` | `group`, `reason`, `announce` | 当前频道变化（含语音 / MCP / 管理端触发的切群、群解散）；`announce` 如「已切换到老乡群，5人在线」，供设备 TTS 或提示 |
-| `floor` | `granted`, `reason`, `holder_name`, `max_ms` | 抢麦结果；`reason`: `busy` / `no_group` |
+| `floor` | `granted`, `utterance_id`, `reason`, `holder_name`, `max_ms` | 抢麦结果；`reason`: `busy` / `no_group` |
 | `floor_revoked` | `reason`, `holder_name` | 话权被收回：`preempted`（车队长 / 紧急频道插话）、`max_duration`（超时）、`idle`（4s 无音频） |
 | `talk_start` | `utterance_id`, `group_id`, `group_name`, `speaker_id`, `speaker_name`, `leader`, `priority`, `replay?` | 下行一段语音开始，随后的二进制帧都属于该段 |
 | `talk_stop` | `utterance_id`, `reason`, `duration_ms` | 该段结束；`reason: preempted` 表示被更高优先级语音打断 |
 | `presence` | `group_id`, `online_count`, `online`, `member_count` | 当前频道在线成员变化 |
+| `transcript` | `utterance_id`, `speaker_name`, `text`, `alert` | 一段发言的转写（字幕），`alert` 为命中的预警词 |
 | `notice` | `level: info\|alert`, `text` | 短文本通知（群解散、关键词预警等），设备可 TTS 播报；`alert` 级别应先播放预警音 |
 | `error` | `code?`, `message`, `candidates?` | 错误；切群名称有歧义时 `code: ambiguous` 并给出候选名 |
 | *二进制* | Opus 包 | 当前 `talk_start` 对应语音段的音频 |
