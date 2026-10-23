@@ -182,7 +182,8 @@ func (h *Hub) handleMessage(c *Conn, m Inbound) {
 	case MsgPTTStop:
 		h.releaseFloor(c)
 	case MsgSwitch:
-		_, candidates, err := h.api.Switch(c.id, m.GroupID, m.Query, m.Delta)
+		before := c.currentGroup()
+		g, candidates, err := h.api.Switch(c.id, m.GroupID, m.Query, m.Delta)
 		switch {
 		case len(candidates) > 0:
 			names := make([]string, len(candidates))
@@ -195,7 +196,7 @@ func (h *Hub) handleMessage(c *Conn, m Inbound) {
 			c.sendJSON(map[string]string{"type": MsgError, "code": "not_found", "message": "没有找到这个群"})
 		case err != nil:
 			c.sendJSON(map[string]string{"type": MsgError, "message": err.Error()})
-		default:
+		case g.ID == before:
 			// Switching to the current group emits no event; confirm anyway.
 			h.SwitchNotify(c.id)
 		}

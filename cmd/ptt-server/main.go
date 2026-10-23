@@ -16,6 +16,7 @@ import (
 	"github.com/plant-squad/ptt-walkie/internal/api"
 	"github.com/plant-squad/ptt-walkie/internal/archive"
 	"github.com/plant-squad/ptt-walkie/internal/config"
+	"github.com/plant-squad/ptt-walkie/internal/mcp"
 	"github.com/plant-squad/ptt-walkie/internal/store"
 	"github.com/plant-squad/ptt-walkie/internal/voice"
 )
@@ -53,6 +54,9 @@ func main() {
 	hub.AddRecorder(arc)
 	arcHandler := &archive.Handler{Archive: arc, Store: st, Hub: hub}
 	arcHandler.Register(mux)
+
+	mcpSrv := mcp.NewServer(mcp.Deps{Store: st, API: apiSrv, Hub: hub, Archive: arcHandler, NearbyRadiusKm: cfg.NearbyRadiusKm})
+	(&mcp.HTTPHandler{Server: mcpSrv, Token: cfg.AuthToken}).Register(mux)
 	go hub.Run(ctx)
 
 	srv := &http.Server{Addr: cfg.Addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
