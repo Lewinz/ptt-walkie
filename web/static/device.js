@@ -175,6 +175,7 @@ function onMessage(m) {
         state.talkStarted = Date.now();
         state.mic.start();
         PTTAudio.tones.permit();
+        startRecognition(m.utterance_id);
       } else {
         PTTAudio.tones.deny();
         log(m.reason === 'busy' ? `抢麦失败：${m.holder_name} 正在讲话` : '当前没有群，无法讲话', 'warn');
@@ -202,6 +203,12 @@ function onMessage(m) {
       }
       renderStatus();
       break;
+    case 'transcript': {
+      const mine = m.speaker_id === deviceId;
+      log(`💬 ${mine ? '我' : m.speaker_name}：${m.text}`, m.alert && m.alert.length ? 'warn' : '');
+      if (!mine) showSubtitle(m);
+      break;
+    }
     case 'notice':
       if (m.level === 'alert') {
         PTTAudio.tones.alert();
@@ -249,6 +256,7 @@ async function releasePTT() {
 
 async function stopTalk(notify) {
   state.talking = false;
+  stopRecognition();
   renderStatus();
   if (state.mic) await state.mic.stop();
   if (notify) send({ type: 'ptt_stop' });
@@ -270,6 +278,52 @@ function bindPTT() {
   window.addEventListener('blur', releasePTT);
 }
 
+// ---------- client-side transcription ----------
+// When the server has no ASR configured it accepts the speaker's own
+// transcript; Chrome's Web Speech API gives us one for free.
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null;
+
+function startRecognition(utteranceId) {
+  if (!Recognition || !utteranceId) return;
+  const r = new Recognition();
+  r.lang = 'zh-CN';
+  r.continuous = true;
+  r.interimResults = false;
+  const parts = [];
+  r.onresult = (e) => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) parts.push(e.results[i][0].transcript);
+    }
+  };
+  r.onerror = () => {};
+  r.onend = () => {
+    const text = parts.join('，').trim();
+    if (text) send({ type: 'transcript', utterance_id: utteranceId, text });
+  };
+  try {
+    r.start();
+    recog = r;
+  } catch { /* already running or blocked */ }
+}
+
+function stopRecognition() {
+  if (!recog) return;
+  // Give the recogniser a moment to finalise the last words.
+  const r = recog;
+  recog = null;
+  setTimeout(() => { try { r.stop(); } catch { /* ended */ } }, 400);
+}
+
+let subtitleTimer = 0;
+function showSubtitle(m) {
+  const el = $('lcd-status');
+  clearTimeout(subtitleTimer);
+  el.textContent = `💬 ${m.speaker_name}：${m.text}`;
+  el.className = 'lcd-status sub' + (m.alert && m.alert.length ? ' sos' : '');
+  subtitleTimer = setTimeout(renderStatus, 6000);
+}
+
 // ---------- controls ----------
 function bindControls() {
   $('prev').onclick = () => send({ type: 'switch', delta: -1 });
@@ -282,6 +336,18 @@ function bindControls() {
     } catch (e) {
       PTTAudio.tones.deny();
       log(e.status === 409 ? '没有可以回放的语音' : '回放失败：' + e.message, 'warn');
+    }
+  };
+
+  $('btn-summary').onclick = async () => {
+    const g = state.current;
+    if (!g) return;
+    try {
+      const sum = await api('GET', `/api/groups/${g.id}/summary?minutes=30&device_id=${encodeURIComponent(deviceId)}`);
+      log('📝 ' + sum.text);
+      PTTAudio.speak(sum.text);
+    } catch (e) {
+      log('摘要失败：' + e.message, 'err');
     }
   };
 

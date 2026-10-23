@@ -202,6 +202,10 @@ func (h *Hub) handleMessage(c *Conn, m Inbound) {
 		}
 	case MsgLocation:
 		h.st.UpdateLocation(c.id, store.GeoPoint{Lat: m.Lat, Lng: m.Lng})
+	case MsgTranscript:
+		if h.OnTranscript != nil && m.UtteranceID != "" && m.Text != "" {
+			h.OnTranscript(c.id, m.UtteranceID, m.Text)
+		}
 	case MsgPing:
 		c.sendJSON(map[string]string{"type": MsgPong})
 	default:

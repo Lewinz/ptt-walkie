@@ -55,6 +55,7 @@ npx @modelcontextprotocol/inspector  # Transport: Streamable HTTP, URL: http://l
 | `listen_leader_only` | 只听车队长的 | |
 | `replay_last` | 刚才说的再放一遍 | 在对讲机上回放原声 |
 | `who_spoke_last` | 刚才是谁说的 | 有转写时附带内容 |
+| `summarize_missed` | 我错过了什么 / 最近半小时群里说了啥 | LLM 摘要，未配置时降级为转写列表 / 发言人统计 |
 | `send_text_message` | 给车队群发：前面堵车 | 文字留言，在线成员设备播报 |
 | `share_group` | 房间号是多少 / 怎么拉人进群 | 返回房间号、链接、二维码地址 |
 | `dissolve_group` | 解散这个群 | 仅车队长 |

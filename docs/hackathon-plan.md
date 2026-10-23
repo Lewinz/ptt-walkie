@@ -12,7 +12,7 @@
 | MCP 传输 | Streamable HTTP（`POST /mcp`）+ 可选的「MCP 接入点」WebSocket 反连 | 灵矽 / xiaozhi 智控台两种接入方式都覆盖 |
 | 设备身份 | `X-Device-Id` 头、`/mcp/d/{device_id}` 路径、工具参数 `device_id` 三选一 | 平台是否携带设备 ID 尚未确认，多路兜底 |
 | 存储 | 内存 + JSON 快照持久化；录音落本地目录，可切七牛 Kodo | 黑客松零依赖可跑，留扩展口 |
-| AI 能力 | OpenAI 兼容接口（默认七牛 AI 大模型推理 `https://openai.qiniu.com/v1`），未配置时降级 | 转写 / 摘要 / 关键词预警可插拔 |
+| AI 能力 | OpenAI 兼容接口（默认七牛 AI 大模型推理 `https://api.qnaigc.com/v1`），未配置时降级 | 转写 / 摘要 / 关键词预警可插拔 |
 
 ## 迭代顺序（每项一个 PR）
 

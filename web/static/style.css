@@ -70,6 +70,7 @@ a.link:hover { color: var(--text); }
 .lcd-status.tx { color: #a3140a; font-weight: 700; }
 .lcd-status.rx { color: #0b4a1c; font-weight: 700; animation: blink 1s infinite; }
 .lcd-status.sos { color: #a3140a; }
+.lcd-status.sub { font-family: -apple-system, "PingFang SC", sans-serif; font-weight: 600; }
 @keyframes blink { 50% { opacity: .55; } }
 
 .knobs { display: flex; justify-content: space-between; margin: 12px 0; }
@@ -91,7 +92,7 @@ a.link:hover { color: var(--text); }
 .ptt-sub { font-size: 12px; opacity: .7; margin-top: 4px; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,57,53,.6); } 50% { box-shadow: 0 0 0 16px rgba(229,57,53,0); } }
 
-.fn-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.fn-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
 .fn-row .btn { padding: 10px 4px; font-size: 14px; }
 
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-top: 10px; }

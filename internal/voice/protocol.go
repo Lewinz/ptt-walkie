@@ -15,6 +15,9 @@ const (
 	MsgSwitch   = "switch"
 	MsgLocation = "location"
 	MsgPing     = "ping"
+	// MsgTranscript lets a capable client (e.g. the browser simulator with
+	// Web Speech API) supply the text of its own utterance.
+	MsgTranscript = "transcript"
 )
 
 // Server → client message types.
@@ -40,6 +43,9 @@ type Inbound struct {
 	Delta   int     `json:"delta,omitempty"`
 	Lat     float64 `json:"lat,omitempty"`
 	Lng     float64 `json:"lng,omitempty"`
+	// transcript
+	UtteranceID string `json:"utterance_id,omitempty"`
+	Text        string `json:"text,omitempty"`
 }
 
 // AudioParams describes the codec every device must speak.
@@ -111,13 +117,14 @@ type talkMsg struct {
 }
 
 type floorMsg struct {
-	Type       string `json:"type"`
-	Granted    bool   `json:"granted"`
-	GroupID    string `json:"group_id,omitempty"`
-	Reason     string `json:"reason,omitempty"`
-	HolderID   string `json:"holder_id,omitempty"`
-	HolderName string `json:"holder_name,omitempty"`
-	MaxMs      int64  `json:"max_ms,omitempty"`
+	Type        string `json:"type"`
+	Granted     bool   `json:"granted"`
+	GroupID     string `json:"group_id,omitempty"`
+	UtteranceID string `json:"utterance_id,omitempty"`
+	Reason      string `json:"reason,omitempty"`
+	HolderID    string `json:"holder_id,omitempty"`
+	HolderName  string `json:"holder_name,omitempty"`
+	MaxMs       int64  `json:"max_ms,omitempty"`
 }
 
 type presenceMsg struct {
