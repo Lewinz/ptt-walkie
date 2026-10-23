@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>加入对讲群</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="join-page">
+<main class="join card">
+  <p class="join-kicker">灵矽对讲 · 邀请你加入</p>
+  <h1 id="g-name">…</h1>
+  <p id="g-meta" class="g-meta"></p>
+  <div class="join-code">房间号 <b id="g-code"></b></div>
+  <p class="join-tip">对着对讲机说「<span id="g-say"></span>」也能加入</p>
+
+  <section class="join-opt">
+    <h3>绑定我的对讲机</h3>
+    <form id="bind" class="col">
+      <input id="dev-id" placeholder="设备 ID（印在设备背面 / 开机播报）" required>
+      <input id="dev-name" placeholder="显示名，如：老王 / 沪A12345（可选）" maxlength="16">
+      <button class="btn primary">加入并切到这个群</button>
+    </form>
+  </section>
+
+  <section class="join-opt">
+    <h3>没有设备？</h3>
+    <a id="use-browser" class="btn">用这个浏览器当对讲机</a>
+  </section>
+  <p id="result" class="join-result"></p>
+</main>
+<script src="/static/join.js"></script>
+</body>
+</html>

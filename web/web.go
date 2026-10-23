@@ -16,6 +16,8 @@ func Register(mux *http.ServeMux) {
 	fileServer := http.FileServerFS(static)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", fileServer))
 	mux.HandleFunc("GET /device", serveFile(static, "device.html"))
+	mux.HandleFunc("GET /admin", serveFile(static, "admin.html"))
+	mux.HandleFunc("GET /join/{code}", serveFile(static, "join.html"))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/device", http.StatusFound)
 	})
