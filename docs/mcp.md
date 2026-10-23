@@ -8,6 +8,16 @@
 |---|---|---|
 | Streamable HTTP | `POST {BASE_URL}/mcp/d/{device_id}` | 灵矽「自定义 MCP」/ MCP Inspector / 任意 MCP 客户端 |
 | Streamable HTTP（头部携带身份） | `POST {BASE_URL}/mcp` + `X-Device-Id: {device_id}` | 平台支持自定义请求头时 |
+| MCP 接入点（反向连接） | 环境变量 `PTT_MCP_ENDPOINT` | 平台提供 `wss://…?token=…` 接入点、服务端无公网地址时 |
+
+### MCP 接入点
+
+xiaozhi 智控台 / 灵矽智能体若提供「MCP 接入点」地址，服务端会**主动连出**该 WebSocket，在上面收发 JSON-RPC（与 xiaozhi `mcp_pipe` 相同的模型），断线指数退避重连，日志中 token 自动脱敏。
+
+```bash
+# 多个接入点用分号分隔；| 后为该智能体代表的设备 ID
+PTT_MCP_ENDPOINT='wss://api.xiaozhi.me/mcp/?token=xxx|car-001; wss://…?token=yyy|car-002'
+```
 
 支持协议版本 `2025-11-25`、`2025-06-18`、`2025-03-26`、`2024-11-05`（按客户端请求协商）。设置 `PTT_AUTH_TOKEN` 后需携带 `Authorization: Bearer <token>` 或 `?token=<token>`。
 

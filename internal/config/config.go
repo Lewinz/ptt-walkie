@@ -26,7 +26,8 @@ type Config struct {
 	ASRModel   string
 	AlertWords []string
 
-	// Optional outbound MCP endpoint (xiaozhi / Lingxi "MCP 接入点" style).
+	// Optional outbound MCP endpoints (xiaozhi / Lingxi "MCP 接入点" style):
+	// "wss://…?token=…|device_id; wss://…|device_id2".
 	MCPEndpoint string
 	// Optional shared token required on /mcp and admin APIs.
 	AuthToken string

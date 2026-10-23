@@ -57,6 +57,9 @@ func main() {
 
 	mcpSrv := mcp.NewServer(mcp.Deps{Store: st, API: apiSrv, Hub: hub, Archive: arcHandler, NearbyRadiusKm: cfg.NearbyRadiusKm})
 	(&mcp.HTTPHandler{Server: mcpSrv, Token: cfg.AuthToken}).Register(mux)
+	for _, ep := range mcp.ParseEndpoints(cfg.MCPEndpoint) {
+		go mcpSrv.RunBridge(ctx, ep)
+	}
 	go hub.Run(ctx)
 
 	srv := &http.Server{Addr: cfg.Addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
