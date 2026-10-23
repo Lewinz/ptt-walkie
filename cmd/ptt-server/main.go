@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/plant-squad/ptt-walkie/internal/api"
 	"github.com/plant-squad/ptt-walkie/internal/config"
 	"github.com/plant-squad/ptt-walkie/internal/store"
 )
@@ -35,6 +36,8 @@ func main() {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})
+	apiSrv := &api.Server{Store: st, BaseURL: cfg.BaseURL, NearbyRadiusKm: cfg.NearbyRadiusKm}
+	apiSrv.Register(mux)
 
 	srv := &http.Server{Addr: cfg.Addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
