@@ -87,7 +87,10 @@ function render() {
     li.onclick = () => send({ type: 'switch', group_id: it.id });
     list.append(li);
   }
-  if (!list.children.length) list.innerHTML = '<li class="empty">还没有加入群：输入房间号加入，或新建一个</li>';
+  if (!list.children.length) {
+    list.innerHTML = '<li class="empty">还没有加入群：输入房间号加入，或新建一个</li>';
+    suggestEcho(list);
+  }
   renderStatus();
 }
 
@@ -111,6 +114,23 @@ function renderStatus() {
   }
 }
 setInterval(() => { if (state.talking) renderStatus(); }, 500);
+
+// In demo mode a "回声测试" (radio check) group exists: offer it to newcomers.
+let echoGroup;
+async function suggestEcho(list) {
+  if (echoGroup === undefined) {
+    try {
+      echoGroup = (await api('GET', '/api/groups')).find((g) => g.name === '回声测试' && g.owner_id === 'echo-bot') || null;
+    } catch { echoGroup = null; }
+  }
+  if (!echoGroup || list.querySelector('.echo-hint')) return;
+  const li = document.createElement('li');
+  li.className = 'echo-hint';
+  li.innerHTML = '<span class="g-name">🔁 加入「回声测试」试机</span><span class="g-meta"></span>';
+  li.querySelector('.g-meta').textContent = `房间 ${echoGroup.code} · 你说完它会复读`;
+  li.onclick = () => joinCode(echoGroup.code);
+  list.append(li);
+}
 
 async function refreshDevice() {
   try {

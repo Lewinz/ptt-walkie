@@ -29,10 +29,12 @@
 ## 快速开始
 
 ```bash
-make run                      # 或 docker compose up --build
+make demo                     # = PTT_DEMO=1，或 docker compose up --build（默认演示模式）
 open http://localhost:8080/device   # 开两个标签页 = 两台对讲机
 open http://localhost:8080/admin    # 车队管理
 ```
+
+演示模式会预置车队群、老乡群、路线群、附近群（阳澄湖服务区）、导游群、紧急频道，并运行内置的 **「回声测试」机器人**：模拟器里点「加入回声测试」，讲完一句它会原样复读——一个人一个标签页就能验证完整语音链路。
 
 1. 在一个标签页「开机」→ 建群（或对 AI 助手说「建个群叫京沪线车队」），得到房间号。
 2. 另一个标签页输入房间号加入，或在管理端扫二维码。
@@ -64,6 +66,7 @@ open http://localhost:8080/admin    # 车队管理
 | `PTT_AUTH_TOKEN` | — | `/mcp` 访问令牌（Bearer 或 `?token=`） |
 | `PTT_MCP_ENDPOINT` | — | MCP 接入点：`wss://…?token=…\|设备ID; …` |
 | `PTT_TLS_CERT` / `PTT_TLS_KEY` | — | 启用 HTTPS |
+| `PTT_DEMO` | — | `1` 时预置演示群并运行内置回声测试机器人 |
 | `PTT_KODO_BUCKET` / `PTT_KODO_AK` / `PTT_KODO_SK` | — | 配置后录音同步到七牛 Kodo（S3 兼容接口），ASR 改用预签名链接，**服务端无公网地址也能转写** |
 | `PTT_KODO_ENDPOINT` | `https://s3.cn-east-1.qiniucs.com` | Kodo S3 域名，区域自动从域名解析（或 `PTT_KODO_REGION`） |
 | `PTT_KODO_PREFIX` | `ptt-walkie/` | 对象键前缀 |

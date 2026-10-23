@@ -96,6 +96,9 @@ func main() {
 	for _, ep := range mcp.ParseEndpoints(cfg.MCPEndpoint) {
 		go mcpSrv.RunBridge(ctx, ep)
 	}
+	if cfg.Demo {
+		go runEchoBot(ctx, localURL(cfg), seedDemo(st))
+	}
 	go hub.Run(ctx)
 	go (&lifecycle.Janitor{Store: st, Hub: hub, DefaultIdle: cfg.TempGroupIdle}).Run(ctx, time.Minute)
 

@@ -45,6 +45,9 @@ type Config struct {
 	KodoAK       string
 	KodoSK       string
 	KodoPrefix   string
+
+	// Demo seeds showcase groups and runs a built-in echo (radio-check) bot.
+	Demo bool
 }
 
 // KodoEnabled reports whether recordings should be mirrored to Kodo.
@@ -91,6 +94,7 @@ func Load() Config {
 		KodoAK:         env("PTT_KODO_AK", ""),
 		KodoSK:         env("PTT_KODO_SK", ""),
 		KodoPrefix:     env("PTT_KODO_PREFIX", "ptt-walkie/"),
+		Demo:           env("PTT_DEMO", "") == "1" || env("PTT_DEMO", "") == "true",
 	}
 }
 
